@@ -1,0 +1,17 @@
+TODOS:
+
+0) Git Repo anlegen & Florian, Korbinan als Beobachter.
+
+1) Schreib den Abstract.
+-- Motivation des Arbeits: QFT besser machen
+-- Paper vergleichen mit "qft small ent."
+-- Evaluierung
+-- metrik: bond_dim
+
+2) Test methoden.
+
+3) Standard QFT bauen.
+
+4) QFT Paper Abschnitt 3 komplett (wie generiert man matrix product operator für QFT?)
+
+Ostern: 28-04 K, 28-12 F nicht da.
