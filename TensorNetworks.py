@@ -25,9 +25,6 @@ class MPS:
     }
 
     ########
-    ### TODO: Implement rotational single gates
-    ### TODO: Implement rotational multi gates
-    ### TODO: Update Gate Dictionaries automatically
     ### TODO: Research & Implement the TEBD Algorithm
     ### TODO: Implement the getAmplitude method
     ########
@@ -44,14 +41,15 @@ class MPS:
             self.initialize(state)
 
         ## Tracking
-        self.gates_applied = []
         ## TODO: Track bond_dims of qubits
+        self.gates_applied = []
 
     def __getitem__(self, item: int):
+        assert item in range(len(self.tensors))
         return self.tensors[item]
 
     def __setitem__(self, item: int, value):
-        ## TODO: Check for conditions on value
+        assert item in range(len(self.tensors))
         self.tensors[item] = value
 
     def __add__(self, other):
@@ -77,17 +75,13 @@ class MPS:
     @classmethod
     def createControlledUnitary(cls, gate: str, add2dict=True):
         assert gate in cls.SingleGates.keys()
-        pass
 
-    @classmethod
-    def RotationalGate(cls):
-        ## TODO: Add a rotational gate to the SingleGates if not already exists
-        pass
-
-    @classmethod
-    def RotationalMultiGate(cls):
-        ## TODO: Add a rotational gate to the MultiGates if not already exists
-        pass
+        mat = np.eye(4, dtype=complex)
+        mat[:2, :2] = MPS.SingleGates[gate]
+        if add2dict:
+            name = "C" + gate
+            cls.MultiGates[name] = mat
+        return mat.reshape(2, 2, 2, 2)
 
     def initialize(self, arr: [bool]):
         """
@@ -121,6 +115,32 @@ class MPS:
 
         ## Keep record & End of method
         self.gates_applied.append((qbit, op))
+
+    def applyRotational(self, op, theta: float, qbit: int):
+        assert qbit in range(len(self.tensors)), "Qbit not found in tensors"
+        assert op in ["X", "Y", "Z"], "Unrecognized operation"
+
+        # theta = theta % (4 * np.pi)
+        sin = np.sin
+        cos = np.cos
+        exp = np.exp
+        gate = 0
+
+        if op == "X":
+            gate = np.array([[cos(theta/2), -1j*sin(theta/2)],
+                             [-1j*sin(theta/2), cos(theta/2)]], dtype=complex)
+        if op == "Y":
+            gate = np.array([[cos(theta/2), -sin(theta/2)],
+                             [sin(theta/2), cos(theta/2)]], dtype=complex)
+        if op == "Z":
+            gate = np.array([[exp(-1j*theta/2), 0],
+                             [0, exp(1j*theta/2)]], dtype=complex)
+
+        tensor = self.tensors[qbit]
+        self.tensors[qbit] = np.einsum("lk, kij -> lij", gate, tensor)
+
+        ## Keep record & End of method
+        self.gates_applied.append((qbit, op, theta))
 
     def applyMultiGate(self, op: MultiGates, c_qbit: int, t_qbit: int):
         assert 0 <= c_qbit and t_qbit <= self.n_qubits, "Qbit index does not match"
@@ -179,3 +199,5 @@ class MPS:
         ## Controlled Qubit Gates
         if op in MPS.MultiGates.keys():
             self.applyMultiGate(c_qbit=qubits[0], t_qbit=qubits[1], op=op)
+
+        ## TODO: Rotation Gates
