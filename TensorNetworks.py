@@ -52,14 +52,6 @@ class MPS:
         assert item in range(len(self.tensors))
         self.tensors[item] = value
 
-    def __add__(self, other):
-        ## TODO: ?? Extend circuit vertically with another circuit ??
-        pass
-
-    def __mul__(self, other):
-        ## TODO: ?? Multiply circuit qbit by qbit with another circuit of the same size ??
-        pass
-
     def __repr__(self):
         ## TODO: Include __dict__
         st = f"QuantumCircuit({self.n_qubits})\n"
