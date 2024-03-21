@@ -66,13 +66,16 @@ class MPS:
 
     @classmethod
     def createControlledUnitary(cls, gate: str, add2dict=True):
-        assert gate in cls.SingleGates.keys()
-
+        """
+        Returns a controlled version of a given unitary gate as rank-4 tensor
+        """
         mat = np.eye(4, dtype=complex)
         mat[:2, :2] = MPS.SingleGates[gate]
+
         if add2dict:
             name = "C" + gate
             cls.MultiGates[name] = mat
+
         return mat.reshape(2, 2, 2, 2)
 
     def initialize(self, arr: [bool]):
@@ -85,10 +88,9 @@ class MPS:
         arr = list(map(int, arr))
         self.tensors = [Tensor.qubit(arr[i]) for i in range(self.n_qubits)]
 
-    def set_state(self, arr: [bool]):
+    def setState(self, arr: [bool]):
         """
-        Selecting the corresponding state dimensions (i_n = {0,1})
-        of the tensor network
+        Assigning classical state values {0, 1} to each qubit of the circuit
         """
         assert len(arr) == self.n_qubits, "Number of qubits does not match"
         assert np.all(list(map(lambda x: x == 0 or x == 1, arr))), "States must be 0 or 1"
@@ -131,8 +133,11 @@ class MPS:
         tensor = self.tensors[qbit]
         self.tensors[qbit] = np.einsum("lk, kij -> lij", gate, tensor)
 
-        ## Keep record & End of method
-        self.gates_applied.append((qbit, op, theta))
+    def applyControlled(self, op: SingleGates, qbit):
+        pass
+
+    def applyControlledRotational(self, op: SingleGates, theta: float):
+        pass
 
     def applyMultiGate(self, op: MultiGates, c_qbit: int, t_qbit: int):
         assert 0 <= c_qbit and t_qbit <= self.n_qubits, "Qbit index does not match"
@@ -147,18 +152,19 @@ class MPS:
         gate = MPS.MultiGates[op]
         T2 = np.einsum("klij, ijmn -> klmn", gate, T1)
 
-        ## TODO: Check correctness
-        ## TODO: Include bond_dim
+        ## Singular Value Decomposition
         U, S, M2 = np.linalg.svd(T2)
         S = S * np.eye(2)
         M1 = np.einsum("ijkl, klm, ijl", U, S)
+
+        ## Assign results back to qubits
         self.tensors[c_qbit], self.tensors[t_qbit] = M1, M2
 
         ## Keep record & End of method
         self.gates_applied.append((c_qbit, t_qbit, op))
 
     def getAmplitude(self, qbit):
-        ## TODO: Get the amplitude of a specific qubit
+        ## TODO: Get the amplitude of a specific qubit by using np.einsum
         pass
 
     def TEBD(self, op: str, *qubits):
