@@ -1,34 +1,22 @@
 import numpy as np
 from Tensor import Tensor
+from Utils import createRotational
 
 
 class MPS:
     """
     Tensor Representation of Quantum Circuit
     """
-    SingleGates = {
+    BasicGates = {
         "X": Tensor([[0, 1], [1, 0]]),
         "Y": Tensor([[0, -1j], [1j, 0]]),
         "Z": Tensor([[1, 0], [0, -1]]),
-        "H": Tensor([[1, 1], [1, -1]]) / 2 ** (1 / 2)
-    }
-
-    MultiGates = {
-        "CX": Tensor([[1, 0, 0, 0],
-                      [0, 1, 0, 0],
-                      [0, 0, 0, 1],
-                      [0, 0, 1, 0]]).reshape(2, 2, 2, 2),
+        "H": Tensor([[1, 1], [1, -1]]) / 2 ** (1 / 2),
         "SWAP": Tensor([[1, 0, 0, 0],
                         [0, 0, 1, 0],
                         [0, 1, 0, 0],
                         [0, 0, 0, 1]]).reshape(2, 2, 2, 2)
     }
-
-    ########
-    ### TODO: Research & Implement the TEBD Algorithm
-    ### TODO: Implement the getAmplitude method
-    ########
-
 
     def __init__(self, num_qubits: int, bond_dim: int, state=None):
         self.tensors: np.ndarray
@@ -64,20 +52,6 @@ class MPS:
         ## TODO: Print only string of the tensors vertically
         return "\n".join([str(q) for q in self.tensors])
 
-    @classmethod
-    def createControlledUnitary(cls, gate: str, add2dict=True):
-        """
-        Returns a controlled version of a given unitary gate as rank-4 tensor
-        """
-        mat = np.eye(4, dtype=complex)
-        mat[:2, :2] = MPS.SingleGates[gate]
-
-        if add2dict:
-            name = "C" + gate
-            cls.MultiGates[name] = mat
-
-        return mat.reshape(2, 2, 2, 2)
-
     def initialize(self, arr: [bool]):
         """
         Initialize the circuit with a given bit string/list
@@ -99,75 +73,50 @@ class MPS:
         for i, state in enumerate(arr):
             self.tensors[i] = self.tensors[i][state]
 
-    def applySingleGate(self, op: SingleGates, qbit: int):
-        assert qbit in range(len(self.tensors)), "Qbit not found in tensors"
-        assert op in MPS.SingleGates.keys(), f"Unrecognized operation: {str(op)}"
-
-        gate = MPS.SingleGates[op]
-        tensor = self.tensors[qbit]
-        self.tensors[qbit] = np.einsum("lk, kij -> lij", gate, tensor)
-
-        ## Keep record & End of method
-        self.gates_applied.append((qbit, op))
-
-    def applyRotational(self, op, theta: float, qbit: int):
-        assert qbit in range(len(self.tensors)), "Qbit not found in tensors"
-        assert op in ["X", "Y", "Z"], "Unrecognized operation"
-
-        # theta = theta % (4 * np.pi)
-        sin = np.sin
-        cos = np.cos
-        exp = np.exp
-        gate = 0
-
-        if op == "X":
-            gate = np.array([[cos(theta/2), -1j*sin(theta/2)],
-                             [-1j*sin(theta/2), cos(theta/2)]], dtype=complex)
-        if op == "Y":
-            gate = np.array([[cos(theta/2), -sin(theta/2)],
-                             [sin(theta/2), cos(theta/2)]], dtype=complex)
-        if op == "Z":
-            gate = np.array([[exp(-1j*theta/2), 0],
-                             [0, exp(1j*theta/2)]], dtype=complex)
-
-        tensor = self.tensors[qbit]
-        self.tensors[qbit] = np.einsum("lk, kij -> lij", gate, tensor)
-
-    def applyControlled(self, op: SingleGates, qbit):
-        pass
-
-    def applyControlledRotational(self, op: SingleGates, theta: float):
-        pass
-
-    def applyMultiGate(self, op: MultiGates, c_qbit: int, t_qbit: int):
-        assert 0 <= c_qbit and t_qbit <= self.n_qubits, "Qbit index does not match"
-        assert t_qbit == c_qbit + 1, "Qbits must be neighbors"
-        assert op in MPS.MultiGates.keys(), f"Unrecognized operation: {str(op)}"
-
-        ## Creating 4d-Tensor from two 2d-Matrices by contraction
-        Mc, Mt = self.tensors[c_qbit], self.tensors[t_qbit]
-        T1 = np.einsum("ijk , lkm -> ijlm", Mc, Mt)
-
-        ## Applying the 4d-gate on the 4d-tensor
-        gate = MPS.MultiGates[op]
-        T2 = np.einsum("klij, ijmn -> klmn", gate, T1)
-
-        ## Singular Value Decomposition
-        U, S, M2 = np.linalg.svd(T2)
-        S = S * np.eye(2)
-        M1 = np.einsum("ijkl, klm, ijl", U, S)
-
-        ## Assign results back to qubits
-        self.tensors[c_qbit], self.tensors[t_qbit] = M1, M2
-
-        ## Keep record & End of method
-        self.gates_applied.append((c_qbit, t_qbit, op))
-
-    def getAmplitude(self, qbit):
+    def getAmplitudeOf(self, qbit):
         ## TODO: Get the amplitude of a specific qubit by using np.einsum
         pass
 
-    def TEBD(self, op: str, *qubits):
+    @classmethod
+    def createUnitary(cls, op: str, param=None) -> np.ndarray:
+        """
+        Creates a unitary gate with given operation name and parameters.
+        """
+        assert op in cls.BasicGates.keys()
+
+        gate: np.ndarray
+        controlled: bool = op[0] == "C"
+        parametrized: bool = param is not None
+
+        if controlled:
+            gate = np.eye(4, dtype=complex)
+            if parametrized:
+                gate[:2, :2] = createRotational(axis=op, theta=param)
+            else:
+                U = MPS.BasicGates[op]
+                gate[:2, :2] = U
+
+            gate.reshape(2, 2, 2, 2)
+
+        else:  # SingleGate
+            if parametrized:
+                gate = createRotational(axis=op, theta=param)
+            else:
+                gate = MPS.BasicGates[op]
+            assert gate.shape == (2, 2)
+
+        return gate
+
+    def applyGate(self, gate: np.ndarray, qubit: int):
+        assert gate.ndim == 2 and gate.shape == (2, 2)
+        assert qubit in range(self.n_qubits)
+
+    def applyControlled(self, gate: np.ndarray, c_qbit: int, t_qbit: int):
+        assert gate.ndim == 4 and gate.shape == (2, 2, 2, 2)
+        assert c_qbit in range(self.n_qubits) and t_qbit in range(self.n_qubits)
+        assert t_qbit - c_qbit == 1
+
+    def TEBD(self, op: str, param=None, *qubits):
         """
         Time-Evolution Block-Decimation (TEBD) Algorithm
 
@@ -183,19 +132,15 @@ class MPS:
             * A Practical Introduction to Tensor Networks, Sec. 7.2
             * Efficient simulation of one-dimensional quantum many-body systems
             * Efficient classical simulation of slightly entangled quantum computations
-        """
-        assert 2 >= len(qubits) > 0
-        assert op in MPS.SingleGates.keys() or op in MPS.MultiGates.keys()
 
         ## TODO: Track Fidelity
-        ## TODO: ?? Extend method to be applicable to certain time steps  ??
+        """
+        assert len(qubits) == 1 or len(qubits) == 2
 
-        ## Single Qubit Gates
-        if op in MPS.SingleGates.keys():
-            self.applySingleGate(qbit=qubits[0], op=op)
+        gate = MPS.createUnitary(op=op, param=param)
 
-        ## Controlled Qubit Gates
-        if op in MPS.MultiGates.keys():
-            self.applyMultiGate(c_qbit=qubits[0], t_qbit=qubits[1], op=op)
+        if len(qubits) == 1:
+            self.applyGate(gate=gate, qubit=qubits[0])
 
-        ## TODO: Rotation Gates
+        if len(qubits) == 2:
+            self.applyControlled(gate=gate, c_qbit=qubits[0], t_qbit=qubits[1])
