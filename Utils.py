@@ -5,8 +5,10 @@ def isUnitary(arr: iter) -> bool:
     pass
 
 
-def createRotational(axis: str, theta: float):
-    assert axis in ["X", "Y", "Z"], "Unrecognized operation"
+def createRotationalUnitary(op: str, theta: float):
+    assert op[-1] in ["X", "Y", "Z"], "Invalid operation."
+    axis = op[-1]
+
     sin = np.sin
     cos = np.cos
     exp = np.exp
