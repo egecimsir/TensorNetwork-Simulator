@@ -1,4 +1,5 @@
 import numpy as np
+
 from Tensor import Tensor
 from Utils import createRotationalUnitary
 
@@ -97,7 +98,7 @@ class MPS:
         if controlled:
             gate_unitary = np.eye(4, dtype=complex)
             if parametrized:
-                gate_unitary[:2, :2] = createRotationalUnitary(axis=op, theta=param)
+                gate_unitary[:2, :2] = createRotationalUnitary(op=op, theta=param)
             else:
                 U = MPS.BasicGates[op]
                 gate_unitary[:2, :2] = U
@@ -106,7 +107,7 @@ class MPS:
 
         else:  # SingleGate
             if parametrized:
-                gate_unitary = createRotationalUnitary(axis=op, theta=param)
+                gate_unitary = createRotationalUnitary(op=op, theta=param)
             else:
                 gate_unitary = MPS.BasicGates[op]
 
