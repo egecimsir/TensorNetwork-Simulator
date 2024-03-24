@@ -28,6 +28,14 @@ class TestMPS(unittest.TestCase):
     #### Test Methods ####
     ######################
 
+    def test_isUnitary(self):
+        ## TODO: Implement
+        pass
+
+    def test_createRotationalUnitary(self):
+        ## TODO: Implement
+        pass
+
     def test_qubit(self):
         ## TODO: Implement
         pass
@@ -62,12 +70,12 @@ class TestMPS(unittest.TestCase):
 
     def test_TEBD(self):
         ## TODO: Implement
-        self.assertEqual(self.qc1.TEBD(...), ..., )
+        self.assertEqual(self.qc1.TEBD(...), ..., ...)
         pass
 
     def test_getAmplitudeOfState(self):
         ## TODO: Implement
-        self.assertEqual(self.qc1.getAmplitudeOfState(...), ..., )
+        self.assertEqual(self.qc1.getAmplitudeOfState(...), ..., ...)
         pass
 
 
