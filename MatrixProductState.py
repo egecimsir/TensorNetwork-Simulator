@@ -33,10 +33,9 @@ def createRotationalUnitary(op: str, theta: float):
 class MPS:
     """
     Matrix Product State Representation of a Quantum Circuit
+        ## TODO: Track bond_dims of qubits
     """
-    ## TODO: Track bond_dims of qubits
 
-    qubits = 0
     ops = ["X", "Y", "Z", "H", "RX", "RY", "RZ"]
     controlled_ops = ["C" + op for op in ops]
     BasicGates = {
@@ -60,7 +59,7 @@ class MPS:
         Creates Qubits of the given basis state
         """
         assert state in [0, 1]
-        return np.eye(2, dtype=complex)[state]
+        return np.eye(2, dtype=complex)[state].reshape(2, 1, 1)
 
     @classmethod
     def createUnitary(cls, op: str, param=None) -> np.ndarray:
@@ -93,10 +92,10 @@ class MPS:
     def __init__(self, num_qubits: int, state=None):
         assert num_qubits > 0
         self.n_qubits: int = num_qubits
+        self.index = 0
 
         ## Initializing Tensors
         self.tensors: [np.ndarray] = []
-        self.index = 0
         if state is None:
             self.initialize([0 for _ in range(num_qubits)])
         else:
@@ -145,12 +144,9 @@ class MPS:
 
         for i in range(self.n_qubits):
             qubit = MPS.qubit(arr[i])
-
-            ## Edge qubits must be rank-2, others rank-3
             if i == 0 or i == self.n_qubits-1:
-                qubit = np.einsum("ijk->ij", qubit)
-            else:
-                qubit.reshape(2, 1, 1)
+                ## Edge qubits must be rank-2, others rank-3
+                qubit = qubit[:, :, 0]
 
             self.tensors.append(qubit)
 
