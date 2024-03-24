@@ -32,6 +32,7 @@ def createRotationalUnitary(op: str, theta: float) -> np.ndarray:
     if axis == "Z":
         gate = np.array([[exp(-1j * theta / 2), 0],
                          [0, exp(1j * theta / 2)]], dtype=complex)
+
     return gate
 
 

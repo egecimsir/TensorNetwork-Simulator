@@ -1,5 +1,5 @@
 import numpy as np
-from Utils import *
+from Utils import createRotationalUnitary
 
 
 class MPS:
@@ -7,6 +7,7 @@ class MPS:
     Matrix Product State Representation of a Quantum Circuit
     """
     ## TODO: Track bond_dims of qubits
+    ## TODO: Replace assertions with custom exceptions
 
     ops: list = ["X", "Y", "Z", "H", "RX", "RY", "RZ"]
     controlled_ops: list = ["C" + op for op in ops]
@@ -162,7 +163,7 @@ class MPS:
         ## Contract  qubits
         res = np.eye(2, dtype=complex)
         for qubit in self.tensors[1: self.n_qubits - 1]:
-            matrix = np.matmul(res, qubit)
+            res = np.matmul(res, qubit)
 
         res = res @ self.tensors[-1]
         res = self.tensors[0] @ res
