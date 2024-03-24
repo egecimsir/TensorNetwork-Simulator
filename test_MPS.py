@@ -2,9 +2,10 @@ import numpy as np
 import unittest
 from MatrixProductState import MPS
 
-## TODO: Write unit tests for MPS Class
+
 
 class TestMPS(unittest.TestCase):
+    ## TODO: Write unit tests for MPS Class
 
     def setUp(self):
         pass
@@ -13,6 +14,9 @@ class TestMPS(unittest.TestCase):
         pass
 
     def test_TEBD(self):
+        pass
+
+    def test_getAmplitude(self):
         pass
 
 

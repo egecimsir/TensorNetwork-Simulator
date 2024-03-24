@@ -33,8 +33,8 @@ def createRotationalUnitary(op: str, theta: float):
 class MPS:
     """
     Matrix Product State Representation of a Quantum Circuit
-        ## TODO: Track bond_dims of qubits
     """
+    ## TODO: Track bond_dims of qubits
 
     ops = ["X", "Y", "Z", "H", "RX", "RY", "RZ"]
     controlled_ops = ["C" + op for op in ops]
@@ -131,8 +131,7 @@ class MPS:
         return st
 
     def __str__(self):
-        ## TODO: Print only string of the tensors horizontally
-        return "\n".join([str(q) for q in self.tensors])
+        return "\n\n".join([str(q) for q in self.tensors])
 
     def initialize(self, arr: [bool]):
         """
@@ -161,11 +160,23 @@ class MPS:
         for i, state in enumerate(arr):
             self[i] = self[i][state]
 
-    def getAmplitudeOf(self, state):
-        """Get the amplitude of a specific qubit by using np.einsum"""
+    def getAmplitudeOfState(self, state):
+        """
+        Get the amplitude of a specific qubit by using np.einsum
+        """
         assert len(state) == self.n_qubits, "Number of qubits does not match"
         assert np.all(list(map(lambda x: x == 0 or x == 1, state))), "States must be 0 or 1"
-        res = 0
+
+        ## Set the basis-state indices of qubits
+        self.assignQubits(state)
+
+        ## Contract  qubits
+        res = np.eye(2, dtype=complex)
+        for qubit in self.tensors[1: self.n_qubits-1]:
+            matrix = np.matmul(res, qubit)
+
+        res = res @ self.tensors[-1]
+        res = self.tensors[0] @ res
 
         return res
 
