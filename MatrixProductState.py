@@ -18,8 +18,8 @@ def createRotationalUnitary(op: str, theta: float):
     gate: np.ndarray = ...
 
     if axis == "X":
-        gate = np.array([[cos(theta/2), -1j*sin(theta/2)],
-                         [-1j*sin(theta/2), cos(theta/2)]], dtype=complex)
+        gate = np.array([[cos(theta / 2), -1j * sin(theta / 2)],
+                         [-1j * sin(theta / 2), cos(theta / 2)]], dtype=complex)
     if axis == "Y":
         gate = np.array([[cos(theta / 2), -sin(theta / 2)],
                          [sin(theta / 2), cos(theta / 2)]], dtype=complex)
@@ -34,47 +34,43 @@ class MPS:
     """
     Matrix Product State Representation of a Quantum Circuit
     """
+    ## TODO: Track bond_dims of qubits
 
-    Operations = ["X", "Y", "Z", "H", "RX", "RY", "RZ"]
-    ControlledOps = ["C" + op for op in Operations]
-
+    qubits = 0
+    ops = ["X", "Y", "Z", "H", "RX", "RY", "RZ"]
+    controlled_ops = ["C" + op for op in ops]
     BasicGates = {
         "X": np.array([[0, 1],
-                      [1, 0]], dtype=complex),
+                       [1, 0]], dtype=complex),
         "Y": np.array([[0, -1j],
-                      [1j, 0]], dtype=complex),
+                       [1j, 0]], dtype=complex),
         "Z": np.array([[1, 0],
-                      [0, -1]], dtype=complex),
+                       [0, -1]], dtype=complex),
         "H": np.array([[1, 1],
-                      [1, -1]], dtype=complex) / 2 ** (1 / 2),
-    }
-
-    event = {
-        "time_step": None,
-        "gate": None,
-        "params": None,
-        "t_qubit": None,
-        "c_Qubit": None
+                       [1, -1]], dtype=complex) / 2 ** (1 / 2),
     }
 
     @classmethod
-    def qubit(cls, state: int):
+    def availableOps(cls) -> list:
+        return cls.ops + cls.controlled_ops
+
+    @classmethod
+    def qubit(cls, state: int) -> np.ndarray:
         """
         Creates Qubits of the given basis state
         """
         assert state in [0, 1]
-        tensor = np.eye(2, dtype=complex)[state]
-        return tensor.reshape(2, 1, 1)
+        return np.eye(2, dtype=complex)[state]
 
     @classmethod
     def createUnitary(cls, op: str, param=None) -> np.ndarray:
         """
         Creates a unitary gate with given operation name and parameters.
         """
-        assert op in cls.Operations + cls.ControlledOps
+        assert op in cls.ops + cls.controlled_ops
 
         gate_unitary: np.ndarray
-        controlled: bool = op in cls.ControlledOps
+        controlled: bool = op in cls.controlled_ops
         parametrized: bool = param is not None
 
         if controlled:
@@ -94,21 +90,21 @@ class MPS:
 
         return gate_unitary
 
-
     def __init__(self, num_qubits: int, state=None):
         assert num_qubits > 0
         self.n_qubits: int = num_qubits
 
         ## Initializing Tensors
-        self.tensors: [np.ndarray] = [MPS.qubit(0) for _ in range(num_qubits)]
-        self[0].reshape(2, 1)
-        self[-1].reshape(2, 1)
-        if state is not None:
+        self.tensors: [np.ndarray] = []
+        self.index = 0
+        if state is None:
+            self.initialize([0 for _ in range(num_qubits)])
+        else:
             self.initialize(state)
 
-        ## TODO: Track bond_dims of qubits
+        ## Tracking
         self.time_step = 0
-        self.history: [MPS.event] = []
+        self.history = []
 
     def __getitem__(self, item: int):
         assert abs(item) in range(self.n_qubits)
@@ -119,13 +115,16 @@ class MPS:
         self.tensors[item] = value
 
     def __iter__(self):
-        pass
+        return self
 
     def __next__(self):
-        pass
+        if self.index > self.n_qubits - 1:
+            raise StopIteration
+        else:
+            self.index += 1
+            return self.tensors[self.index-1]
 
     def __repr__(self):
-        ## TODO: Include __dict__
         st = f"QuantumCircuit({self.n_qubits})\n"
         for q in self.tensors:
             __ = f"\n{str(q)}\n\n"
@@ -133,7 +132,7 @@ class MPS:
         return st
 
     def __str__(self):
-        ## TODO: Print only string of the tensors vertically
+        ## TODO: Print only string of the tensors horizontally
         return "\n".join([str(q) for q in self.tensors])
 
     def initialize(self, arr: [bool]):
@@ -142,9 +141,18 @@ class MPS:
         """
         assert len(arr) == self.n_qubits, "Number of qubits does not match"
         assert np.all(list(map(lambda x: x == 0 or x == 1, arr))), "Initial states must be 0 or 1"
-
         arr = list(map(int, arr))
-        self.tensors = [MPS.qubit(arr[i]) for i in range(self.n_qubits)]
+
+        for i in range(self.n_qubits):
+            qubit = MPS.qubit(arr[i])
+
+            ## Edge qubits must be rank-2, others rank-3
+            if i == 0 or i == self.n_qubits-1:
+                qubit = np.einsum("ijk->ij", qubit)
+            else:
+                qubit.reshape(2, 1, 1)
+
+            self.tensors.append(qubit)
 
     def assignQubits(self, arr: [bool]):
         """
@@ -152,27 +160,29 @@ class MPS:
         """
         assert len(arr) == self.n_qubits, "Number of qubits does not match"
         assert np.all(list(map(lambda x: x == 0 or x == 1, arr))), "States must be 0 or 1"
-
         arr = list(map(int, arr))
+
         for i, state in enumerate(arr):
             self[i] = self[i][state]
 
-    ## TODO:
     def getAmplitudeOf(self, state):
         """Get the amplitude of a specific qubit by using np.einsum"""
         assert len(state) == self.n_qubits, "Number of qubits does not match"
         assert np.all(list(map(lambda x: x == 0 or x == 1, state))), "States must be 0 or 1"
-        pass
+        res = 0
 
-    def applyGate(self, gate: np.ndarray, qbit: int):
-        assert gate.ndim == 2 and gate.shape == (2, 2)
+        return res
+
+    def applyGate(self, gate_U: np.ndarray, qbit: int):
+        assert gate_U.ndim == 2 and gate_U.shape == (2, 2)
         assert qbit in range(self.n_qubits)
 
-        tensor = self.tensors[qbit]
-        self[qbit] = np.einsum("lk, kij -> lij", gate, tensor)
+        ## Tensor contraction
+        tensor = self[qbit]
+        self[qbit] = np.einsum("lk, kij -> lij", gate_U, tensor)
 
-    def applyControlled(self, gate: np.ndarray, c_qbit: int, t_qbit: int):
-        assert gate.ndim == 4 and gate.shape == (2, 2, 2, 2)
+    def applyControlled(self, gate_U: np.ndarray, c_qbit: int, t_qbit: int):
+        assert gate_U.ndim == 4 and gate_U.shape == (2, 2, 2, 2)
         assert c_qbit in range(self.n_qubits) and t_qbit in range(self.n_qubits)
         assert t_qbit - c_qbit == 1
 
@@ -181,7 +191,7 @@ class MPS:
         T1 = np.einsum("ijk , lkm -> ijlm", Mc, Mt)
 
         ## Applying the 4d-gate on the 4d-tensor
-        T2 = np.einsum("klij, ijmn -> klmn", gate, T1)
+        T2 = np.einsum("klij, ijmn -> klmn", gate_U, T1)
 
         ## Singular Value Decomposition
         U, S, M2 = np.linalg.svd(T2)
@@ -222,16 +232,25 @@ class MPS:
         ## TODO: Track Fidelity
         """
         assert len(qubits) == 1 or len(qubits) == 2
-        assert op in MPS.Operations + MPS.ControlledOps
+        assert op in MPS.availableOps()
         if param is not None:
-            assert "R" in op
+            assert "R" in op, "Rotational Gates (R_, CR_) can have parameters"
+        event = {}
 
         ## Create the desired unitary matrix
         gate: np.ndarray = MPS.createUnitary(op=op, param=param)
 
-        ## Apply the unitary gates using tensor contraction
+        ## Apply the unitary gates & Create events
         if len(qubits) == 1:
-            self.applyGate(gate=gate, qbit=qubits[0])
+            self.applyGate(gate_U=gate, qbit=qubits[0])
+            event = dict(time_step=self.time_step+1, op=op, param=param,
+                         unitary=gate, c_qubit=None, t_qubit=qubits[0])
 
-        if len(qubits) == 2:
-            self.applyControlled(gate=gate, c_qbit=qubits[0], t_qbit=qubits[1])
+        elif len(qubits) == 2:
+            self.applyControlled(gate_U=gate, c_qbit=qubits[0], t_qbit=qubits[1])
+            event = dict(time_step=self.time_step+1, op=op, param=param,
+                         unitary=gate, c_qubit=qubits[0], t_qubit=qubits[1])
+
+        ## Update history with current event
+        self.history.append(event)
+        self.time_step += 1
