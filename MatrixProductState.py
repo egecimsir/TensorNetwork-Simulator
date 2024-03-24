@@ -1,51 +1,129 @@
 import numpy as np
 
-from Tensor import Tensor
-from Utils import createRotationalUnitary
+
+def isUnitary(arr: iter) -> bool:
+    pass
+
+
+def createRotationalUnitary(op: str, theta: float):
+    assert op[-1] in ["X", "Y", "Z"], "Invalid operation."
+    axis = op[-1]
+
+    sin = np.sin
+    cos = np.cos
+    exp = np.exp
+    gate: np.ndarray = ...
+
+    if axis == "X":
+        gate = np.array([[cos(theta/2), -1j*sin(theta/2)],
+                         [-1j*sin(theta/2), cos(theta/2)]], dtype=complex)
+    if axis == "Y":
+        gate = np.array([[cos(theta / 2), -sin(theta / 2)],
+                         [sin(theta / 2), cos(theta / 2)]], dtype=complex)
+    if axis == "Z":
+        gate = np.array([[exp(-1j * theta / 2), 0],
+                         [0, exp(1j * theta / 2)]], dtype=complex)
+
+    return gate
 
 
 class MPS:
     """
-    Tensor Representation of Quantum Circuit
+    Matrix Product State Representation of a Quantum Circuit
     """
-    BasicGates = {
-        "X": Tensor([[0, 1],
-                     [1, 0]]),
-        "Y": Tensor([[0, -1j],
-                     [1j, 0]]),
-        "Z": Tensor([[1, 0],
-                     [0, -1]]),
-        "H": Tensor([[1, 1],
-                     [1, -1]]) / 2 ** (1 / 2),
-        "SWAP": Tensor([[1, 0, 0, 0],
-                        [0, 0, 1, 0],
-                        [0, 1, 0, 0],
-                        [0, 0, 0, 1]]).reshape(2, 2, 2, 2)
-    }
+
     Operations = ["X", "Y", "Z", "H", "RX", "RY", "RZ"]
     ControlledOps = ["C" + op for op in Operations]
 
-    def __init__(self, num_qubits: int, bond_dim: int, state=None):
-        self.tensors: np.ndarray
-        self.n_qubits = num_qubits
-        self.bond_dim = bond_dim
+    BasicGates = {
+        "X": np.array([[0, 1],
+                      [1, 0]], dtype=complex),
+        "Y": np.array([[0, -1j],
+                      [1j, 0]], dtype=complex),
+        "Z": np.array([[1, 0],
+                      [0, -1]], dtype=complex),
+        "H": np.array([[1, 1],
+                      [1, -1]], dtype=complex) / 2 ** (1 / 2),
+        "SWAP": np.array([[1, 0, 0, 0],
+                          [0, 0, 1, 0],
+                          [0, 1, 0, 0],
+                          [0, 0, 0, 1]]).reshape(2, 2, 2, 2)
+    }
 
-        if state is None:
-            self.tensors = np.array([Tensor.qubit(0) for t in range(num_qubits)])
-        else:
+    event = {
+        "time_step": None,
+        "gate": None,
+        "params": None,
+        "t_qubit": None,
+        "c_Qubit": None
+    }
+
+    @classmethod
+    def qubit(cls, state: int):
+        """
+        Creates Qubits of the given basis state
+        """
+        assert state in [0, 1]
+        tensor = np.eye(2, dtype=complex)[state]
+        return tensor.reshape(2, 1, 1)
+
+    @classmethod
+    def createUnitary(cls, op: str, param=None) -> np.ndarray:
+        """
+        Creates a unitary gate with given operation name and parameters.
+        """
+        assert op in cls.Operations + cls.ControlledOps
+
+        gate_unitary: np.ndarray
+        controlled: bool = op in cls.ControlledOps
+        parametrized: bool = param is not None
+
+        if controlled:
+            gate_unitary = np.eye(4, dtype=complex)
+            if parametrized:
+                gate_unitary[:2, :2] = createRotationalUnitary(op=op, theta=param)
+            else:
+                U = MPS.BasicGates[op]
+                gate_unitary[:2, :2] = U
+            gate_unitary.reshape(2, 2, 2, 2)
+
+        else:  # SingleGate
+            if parametrized:
+                gate_unitary = createRotationalUnitary(op=op, theta=param)
+            else:
+                gate_unitary = MPS.BasicGates[op]
+
+        return gate_unitary
+
+
+    def __init__(self, num_qubits: int, state=None):
+        assert num_qubits > 0
+        self.n_qubits: int = num_qubits
+
+        ## Initializing Tensors
+        self.tensors: [np.ndarray] = [MPS.qubit(0) for _ in range(num_qubits)]
+        self[0].reshape(2, 1)
+        self[-1].reshape(2, 1)
+        if state is not None:
             self.initialize(state)
 
-        ## Tracking
         ## TODO: Track bond_dims of qubits
-        self.gates_applied = []
+        self.time_step = 0
+        self.history: [MPS.event] = []
 
     def __getitem__(self, item: int):
-        assert item in range(len(self.tensors))
+        assert abs(item) in range(self.n_qubits)
         return self.tensors[item]
 
     def __setitem__(self, item: int, value):
-        assert item in range(len(self.tensors))
+        assert abs(item) in range(self.n_qubits)
         self.tensors[item] = value
+
+    def __iter__(self):
+        pass
+
+    def __next__(self):
+        pass
 
     def __repr__(self):
         ## TODO: Include __dict__
@@ -67,9 +145,9 @@ class MPS:
         assert np.all(list(map(lambda x: x == 0 or x == 1, arr))), "Initial states must be 0 or 1"
 
         arr = list(map(int, arr))
-        self.tensors = [Tensor.qubit(arr[i]) for i in range(self.n_qubits)]
+        self.tensors = [MPS.qubit(arr[i]) for i in range(self.n_qubits)]
 
-    def setState(self, arr: [bool]):
+    def assignQubits(self, arr: [bool]):
         """
         Assigning classical state values {0, 1} to each qubit of the circuit
         """
@@ -80,38 +158,12 @@ class MPS:
         for i, state in enumerate(arr):
             self[i] = self[i][state]
 
-    def getAmplitudeOf(self, qbit):
-        ## TODO: Get the amplitude of a specific qubit by using np.einsum
+    ## TODO:
+    def getAmplitudeOf(self, state):
+        """Get the amplitude of a specific qubit by using np.einsum"""
+        assert len(state) == self.n_qubits, "Number of qubits does not match"
+        assert np.all(list(map(lambda x: x == 0 or x == 1, state))), "States must be 0 or 1"
         pass
-
-    @classmethod
-    def createUnitary(cls, op: str, param=None) -> np.ndarray:
-        """
-        Creates a unitary gate with given operation name and parameters.
-        """
-        assert op in cls.Operations + cls.ControlledOps
-
-        gate_unitary: np.ndarray
-        controlled: bool = op in cls.ControlledOps
-        parametrized: bool = param is not None
-
-        if controlled:
-            gate_unitary = np.eye(4, dtype=complex)
-            if parametrized:
-                gate_unitary[:2, :2] = createRotationalUnitary(op=op, theta=param)
-            else:
-                U = MPS.BasicGates[op]
-                gate_unitary[:2, :2] = U
-
-            gate_unitary.reshape(2, 2, 2, 2)
-
-        else:  # SingleGate
-            if parametrized:
-                gate_unitary = createRotationalUnitary(op=op, theta=param)
-            else:
-                gate_unitary = MPS.BasicGates[op]
-
-        return gate_unitary
 
     def applyGate(self, gate: np.ndarray, qbit: int):
         assert gate.ndim == 2 and gate.shape == (2, 2)
