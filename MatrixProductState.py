@@ -1,8 +1,11 @@
 import numpy as np
 
 
-def isUnitary(arr: iter) -> bool:
-    pass
+def isUnitary(arr: np.ndarray) -> bool:
+    assert arr.dtype == complex
+    eye = np.eye(len(arr), dtype=complex)
+    arr_t = arr.T.conj()
+    return np.allclose(eye, arr.dot(arr_t))
 
 
 def createRotationalUnitary(op: str, theta: float):
@@ -44,10 +47,6 @@ class MPS:
                       [0, -1]], dtype=complex),
         "H": np.array([[1, 1],
                       [1, -1]], dtype=complex) / 2 ** (1 / 2),
-        "SWAP": np.array([[1, 0, 0, 0],
-                          [0, 0, 1, 0],
-                          [0, 1, 0, 0],
-                          [0, 0, 0, 1]]).reshape(2, 2, 2, 2)
     }
 
     event = {
