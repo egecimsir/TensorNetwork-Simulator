@@ -20,21 +20,16 @@ class TestMPS(unittest.TestCase):
         ## Test qc.time_step
         ## Test qc.history
 
-    def tearDown(self):
-        ## TODO: Implement
-        pass
+    ##############################
+    ######## Test Methods ########
+    ##############################
 
-    ######################
-    #### Test Methods ####
-    ######################
+    def test_availableOps(self):
+        ops = ["X", "Y", "Z", "H", "RX", "RY", "RZ"]
+        c_ops = ["C" + op for op in ops]
+        all_ops = ops + c_ops
 
-    def test_isUnitary(self):
-        ## TODO: Implement
-        pass
-
-    def test_createRotationalUnitary(self):
-        ## TODO: Implement
-        pass
+        self.assertEqual(self.qc1.availableOps(), all_ops)
 
     def test_qubit(self):
         ## TODO: Implement

@@ -94,7 +94,7 @@ class MPS:
             raise StopIteration
         else:
             self.index += 1
-            return self.tensors[self.index-1]
+            return self.tensors[self.index - 1]
 
     def __repr__(self):
         st = f"QuantumCircuit({self.n_qubits})\n"
@@ -116,7 +116,7 @@ class MPS:
 
         for i in range(self.n_qubits):
             qubit = MPS.qubit(arr[i])
-            if i == 0 or i == self.n_qubits-1:
+            if i == 0 or i == self.n_qubits - 1:
                 ## Edge qubits must be rank-2, others rank-3
                 qubit = qubit[:, :, 0]
 
@@ -130,10 +130,10 @@ class MPS:
         """
         results: [bool] = []
         for i, tensor in enumerate(self.tensors):
-            if i == 0 or i == self.n_qubits-1:
-                res = tensor.ndim == 2 and tensor.shape == (2, 1)
+            if i == 0 or i == self.n_qubits - 1:
+                res = tensor.ndim == 2 and tensor.dtype == complex and tensor.shape == (2, 1)
             else:
-                res = tensor.ndim == 3 and tensor.shape == (2, 1, 1)
+                res = tensor.ndim == 3 and tensor.dtype == complex and tensor.shape == (2, 1, 1)
             results.append(res)
 
         return np.all(results)
@@ -161,7 +161,7 @@ class MPS:
 
         ## Contract  qubits
         res = np.eye(2, dtype=complex)
-        for qubit in self.tensors[1: self.n_qubits-1]:
+        for qubit in self.tensors[1: self.n_qubits - 1]:
             matrix = np.matmul(res, qubit)
 
         res = res @ self.tensors[-1]
@@ -239,12 +239,12 @@ class MPS:
         ## Apply the unitary gates & Create events
         if len(qubits) == 1:
             self.applyGate(gate_U=gate, qbit=qubits[0])
-            event = dict(time_step=self.time_step+1, op=op, param=param,
+            event = dict(time_step=self.time_step + 1, op=op, param=param,
                          unitary=gate, c_qubit=None, t_qubit=qubits[0])
 
         elif len(qubits) == 2:
             self.applyControlled(gate_U=gate, c_qbit=qubits[0], t_qbit=qubits[1])
-            event = dict(time_step=self.time_step+1, op=op, param=param,
+            event = dict(time_step=self.time_step + 1, op=op, param=param,
                          unitary=gate, c_qubit=qubits[0], t_qubit=qubits[1])
 
         ## Update history with current event
