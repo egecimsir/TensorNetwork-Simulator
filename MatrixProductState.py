@@ -8,9 +8,10 @@ class MPS:
     """
     ## TODO: Track bond_dims of qubits
 
-    ops = ["X", "Y", "Z", "H", "RX", "RY", "RZ"]
-    controlled_ops = ["C" + op for op in ops]
-    BasicGates = {
+    ops: list = ["X", "Y", "Z", "H", "RX", "RY", "RZ"]
+    controlled_ops: list = ["C" + op for op in ops]
+
+    BaseQuantumGates = {
         "X": np.array([[0, 1],
                        [1, 0]], dtype=complex),
         "Y": np.array([[0, -1j],
@@ -49,7 +50,7 @@ class MPS:
             if parametrized:
                 gate_unitary[:2, :2] = createRotationalUnitary(op=op, theta=param)
             else:
-                U = MPS.BasicGates[op]
+                U = MPS.BaseQuantumGates[op]
                 gate_unitary[:2, :2] = U
             gate_unitary.reshape(2, 2, 2, 2)
 
@@ -57,7 +58,7 @@ class MPS:
             if parametrized:
                 gate_unitary = createRotationalUnitary(op=op, theta=param)
             else:
-                gate_unitary = MPS.BasicGates[op]
+                gate_unitary = MPS.BaseQuantumGates[op]
 
         return gate_unitary
 
@@ -120,6 +121,22 @@ class MPS:
                 qubit = qubit[:, :, 0]
 
             self.tensors.append(qubit)
+
+    def checkShapes(self) -> bool:
+        """
+        Check if the tensors has the correct shape:
+            ++ Boundary Qubits are rank-2
+            ++ Middle Qubits are rank-3
+        """
+        results: [bool] = []
+        for i, tensor in enumerate(self.tensors):
+            if i == 0 or i == self.n_qubits-1:
+                res = tensor.ndim == 2 and tensor.shape == (2, 1)
+            else:
+                res = tensor.ndim == 3 and tensor.shape == (2, 1, 1)
+            results.append(res)
+
+        return np.all(results)
 
     def assignQubits(self, arr: [bool]):
         """
