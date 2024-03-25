@@ -1,6 +1,5 @@
 ## TODO: Extend and improve exceptions
 
-
 class InvalidOperationException(Exception):
     pass
 
@@ -10,4 +9,8 @@ class UnmatchedQubitsException(Exception):
 
 
 class InvalidGateException(Exception):
+    pass
+
+
+class InitializationException(Exception):
     pass

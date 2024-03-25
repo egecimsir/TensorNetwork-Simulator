@@ -1,5 +1,5 @@
 import numpy as np
-from Utils import createRotationalUnitary
+from Utils import createRotationalUnitary, isUnitary
 from Exceptions import *
 
 
@@ -8,11 +8,10 @@ class MPS:
     Matrix Product State Representation of a Quantum Circuit
     """
     ## TODO: Track bond_dims of qubits
-    ## TODO: Replace assertions with custom exceptions
+    ## TODO: Improve exceptions
 
     ops: list = ["X", "Y", "Z", "H", "RX", "RY", "RZ"]
     controlled_ops: list = ["C" + op for op in ops]
-
     BaseQuantumGates = {
         "X": np.array([[0, 1],
                        [1, 0]], dtype=complex),
@@ -25,8 +24,11 @@ class MPS:
     }
 
     @classmethod
-    def availableOps(cls) -> list:
-        return cls.ops + cls.controlled_ops
+    def availableOps(cls, _print_=False) -> list:
+        allOps = cls.ops + cls.controlled_ops
+        if _print_:
+            print(f"Available Operations: {allOps}")
+        return allOps
 
     @classmethod
     def qubit(cls, state: int) -> np.ndarray:
@@ -43,7 +45,7 @@ class MPS:
         Creates a unitary gate with given operation name and parameters.
         """
         if op not in cls.ops + cls.controlled_ops:
-            raise InvalidOperationException("")
+            raise InvalidOperationException
 
         gate_unitary: np.ndarray
         controlled: bool = op in cls.controlled_ops
@@ -69,6 +71,7 @@ class MPS:
     def __init__(self, num_qubits: int, state=None):
         if num_qubits <= 0:
             raise ValueError("num_qubits must be positive integer")
+
         self.n_qubits: int = num_qubits
         self.index = 0
 
@@ -85,12 +88,12 @@ class MPS:
 
     def __getitem__(self, item: int):
         if abs(item) not in range(self.n_qubits):
-            raise IndexError()
+            raise IndexError
         return self.tensors[item]
 
     def __setitem__(self, item: int, value):
         if abs(item) not in range(self.n_qubits):
-            raise IndexError()
+            raise IndexError
         self.tensors[item] = value
 
     def __iter__(self):
@@ -121,15 +124,17 @@ class MPS:
             raise UnmatchedQubitsException
         if not np.all(list(map(lambda x: x == 0 or x == 1, arr))):
             raise ValueError("Initial states must be 0 or 1")
-        arr = list(map(int, arr))
 
+        arr = list(map(int, arr))
         for i in range(self.n_qubits):
             qubit = MPS.qubit(arr[i])
             if i == 0 or i == self.n_qubits - 1:
                 ## Edge qubits must be rank-2, others rank-3
                 qubit = qubit[:, :, 0]
-
             self.tensors.append(qubit)
+
+        if not self.checkShapes():
+            raise InitializationException
 
     def checkShapes(self) -> bool:
         """
@@ -155,8 +160,8 @@ class MPS:
             raise UnmatchedQubitsException
         if not np.all(list(map(lambda x: x == 0 or x == 1, arr))):
             raise ValueError("States must be 0 or 1")
-        arr = list(map(int, arr))
 
+        arr = list(map(int, arr))
         for i, state in enumerate(arr):
             self[i] = self[i][state]
 
@@ -185,6 +190,8 @@ class MPS:
     def applyGate(self, gate_U: np.ndarray, qbit: int):
         if not (gate_U.ndim == 2 and gate_U.shape == (2, 2)):
             raise InvalidGateException
+        if not isUnitary(gate_U):
+            raise InvalidGateException
         if qbit not in range(self.n_qubits):
             raise IndexError
 
@@ -195,7 +202,7 @@ class MPS:
     def applyControlled(self, gate_U: np.ndarray, c_qbit: int, t_qbit: int):
         if not (gate_U.ndim == 4 and gate_U.shape == (2, 2, 2, 2)):
             raise InvalidGateException
-        if (c_qbit not in range(self.n_qubits)) or (t_qbit not in range(self.n_qubits)):
+        if not (c_qbit in range(self.n_qubits) and t_qbit in range(self.n_qubits)):
             raise IndexError
         if (t_qbit - c_qbit) != 1:
             raise UnmatchedQubitsException
@@ -219,7 +226,7 @@ class MPS:
         """
         Swaps two sequential qubits.
         """
-        if q1 not in range(self.n_qubits) or q2 not in range(self.n_qubits):
+        if not (q1 in range(self.n_qubits) and q2 in range(self.n_qubits)):
             raise IndexError
         if abs(q1 - q2) != 1:
             raise UnmatchedQubitsException
@@ -255,6 +262,7 @@ class MPS:
             if "R" not in op:
                 ## "Rotational Gates (R_, CR_) can have parameters"
                 raise InvalidOperationException
+
         event = {}
 
         ## Create the desired unitary matrix
