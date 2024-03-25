@@ -5,7 +5,9 @@ def isUnitary(arr: np.ndarray) -> bool:
     """
     Checks if a tensor is unitary
     """
-    assert arr.dtype == complex
+    if not arr.dtype == complex:
+        raise TypeError('Input tensor must be complex.')
+
     eye = np.eye(len(arr), dtype=complex)
     arr_t = arr.T.conj()
     return np.allclose(eye, arr.dot(arr_t))
@@ -15,7 +17,8 @@ def createRotationalUnitary(op: str, theta: float) -> np.ndarray:
     """
     Creates RX, RY, RZ gates for a given string={'X','Y','Z'}
     """
-    assert op[-1] in ["X", "Y", "Z"], "Invalid operation."
+    if op[-1] not in ["X", "Y", "Z"]:
+        raise ValueError("Invalid operation.")
     axis = op[-1]
 
     sin = np.sin
