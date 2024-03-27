@@ -1,5 +1,5 @@
 import numpy as np
-from Utils import createRotationalUnitary, isUnitary
+from Utils import *
 from Exceptions import *
 
 
@@ -235,6 +235,7 @@ class MPS:
         ## Increase time step
         self.time_step += 1
 
+    @runtime
     def TEBD(self, op: str, param=None, *qubits):
         """
         Time-Evolution Block-Decimation (TEBD) Algorithm

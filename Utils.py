@@ -39,4 +39,13 @@ def createRotationalUnitary(op: str, theta: float) -> np.ndarray:
     return gate
 
 
+def runtime(func: callable):
+    from datetime import datetime
+    def wrapper(*args, **kwargs):
+        begin = datetime.now()
+        func(*args, **kwargs)
+        end = datetime.now()
+        delta = (end - begin)
+        print(f"{func.__name__} runtime: {delta:.4f}s")
 
+    return wrapper

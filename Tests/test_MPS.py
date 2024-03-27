@@ -61,12 +61,12 @@ class TestMPS(unittest.TestCase):
 
     def test_TEBD(self):
         ## TODO: Implement
-        self.assertEqual(self.qc1.TEBD(...), ..., ...)
+        self.assertEqual(self.qc1.TEBD(...), ...)
         pass
 
     def test_getAmplitudeOfState(self):
         ## TODO: Implement
-        self.assertEqual(self.qc1.get_amplitude_of(...), ..., ...)
+        self.assertEqual(self.qc1.get_amplitude_of(...), ...)
         pass
 
 
