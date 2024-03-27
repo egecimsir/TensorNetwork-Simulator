@@ -4,6 +4,7 @@ from TensorNetworks import *
 
 ## TODO: Track bond_dims of qubits
 ## TODO: Improve exceptions
+
 class MatrixProductState(TensorNetworks):
     """
     Matrix Product State Representation of a Quantum Circuit
@@ -50,6 +51,47 @@ class MatrixProductState(TensorNetworks):
 
         if not self.check_shapes():
             raise InitializationError
+
+    def apply_gate(self, gate_U: np.ndarray, qbit: int):
+        """
+        Performs the matrix multiplication: gate_U * tensor
+        """
+        if not (gate_U.ndim == 2 and gate_U.shape == (2, 2)):
+            raise InvalidGate
+        if not isUnitary(gate_U):
+            raise InvalidGate
+        if qbit not in range(self.n_qubits):
+            raise IndexError
+
+        ## Tensor contraction
+        tensor = self[qbit]
+        self[qbit] = np.einsum("lk, kij -> lij", gate_U, tensor)
+
+    def apply_controlled_gate(self, gate_U: np.ndarray, c_qbit: int, t_qbit: int):
+        """
+        Performs the 4d-tensor contraction between qubits and the gate
+        """
+        if not (gate_U.ndim == 4 and gate_U.shape == (2, 2, 2, 2)):
+            raise InvalidGate
+        if not (c_qbit in range(self.n_qubits) and t_qbit in range(self.n_qubits)):
+            raise IndexError
+        if (t_qbit - c_qbit) != 1:
+            raise InvalidOperation
+
+        ## Creating 4d-Tensor from two 2d-Matrices by contraction
+        Mc, Mt = self[c_qbit], self[t_qbit]
+        T1 = np.einsum("ijk , lkm -> ijlm", Mc, Mt)
+
+        ## Applying the 4d-gate on the 4d-tensor
+        T2 = np.einsum("klij, ijmn -> klmn", gate_U, T1)
+
+        ## Singular Value Decomposition
+        U, S, M2 = np.linalg.svd(T2)
+        S = S * np.eye(2)
+        M1 = np.einsum("ijkl, klm, ijl", U, S)
+
+        ## Assign results back to qubits
+        self[c_qbit], self[t_qbit] = M1, M2
 
     @TensorNetworks.execute
     def get_amplitude_of(self, state: str) -> float:
@@ -155,7 +197,7 @@ class MatrixProductState(TensorNetworks):
                          exec_time=None)
         ## Apply Multi Qubit Gate
         elif len(qubits) == 2:
-            self.apply_controlled(gate_U=gate, c_qbit=qubits[0], t_qbit=qubits[1])
+            self.apply_controlled_gate(gate_U=gate, c_qbit=qubits[0], t_qbit=qubits[1])
             event = dict(time_step=self.time_step + 1,
                          op=op,
                          param=param,
@@ -169,7 +211,3 @@ class MatrixProductState(TensorNetworks):
         self.time_step += 1
 
         return event
-
-    def print_out(self) -> str:
-        print(self)
-        return str(self)

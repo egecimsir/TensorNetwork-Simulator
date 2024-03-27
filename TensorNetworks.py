@@ -1,4 +1,5 @@
 import numpy as np
+
 from Exceptions import *
 from Utils import *
 
@@ -7,7 +8,7 @@ class TensorNetworks:
     """
     Base class for Matrix Product States
     """
-    name: str = "???"
+    name: str = "TensorNetwork"
     BaseQuantumGates = {
         "X": np.array([[0, 1],
                        [1, 0]], dtype=complex),
@@ -111,6 +112,10 @@ class TensorNetworks:
     def __str__(self):
         return "\n\n".join([str(q) for q in self.tensors])
 
+    def print_out(self) -> str:
+        print(self)
+        return str(self)
+
     def valid_state(self, state) -> bool:
         state = to_int_list(state)
         qubits_match: bool = len(state) == self.n_qubits
@@ -119,7 +124,7 @@ class TensorNetworks:
         return qubits_match and all_qubits_binary
 
     def get_basis_states(self) -> tuple:
-        return tuple([bin(i)[2:].zfill(self.n_qubits) for i in range(2**self.n_qubits)])
+        return tuple([bin(i)[2:].zfill(self.n_qubits) for i in range(2 ** self.n_qubits)])
 
     def execute(func: callable) -> callable:
         from datetime import datetime
@@ -145,48 +150,6 @@ class TensorNetworks:
 
             ## Print out
             if self.print_OUT:
-                print(f"\n{func.__name__} Execution time: {delta*1000}ms\n")
+                print(f"\n{func.__name__} Execution time: {delta * 1000}ms\n")
 
         return wrapper
-
-    def apply_gate(self, gate_U: np.ndarray, qbit: int):
-        """
-        Performs the matrix multiplication: gate_U * tensor
-        """
-        if not (gate_U.ndim == 2 and gate_U.shape == (2, 2)):
-            raise InvalidGate
-        if not isUnitary(gate_U):
-            raise InvalidGate
-        if qbit not in range(self.n_qubits):
-            raise IndexError
-
-        ## Tensor contraction
-        tensor = self[qbit]
-        self[qbit] = np.einsum("lk, kij -> lij", gate_U, tensor)
-
-    def apply_controlled(self, gate_U: np.ndarray, c_qbit: int, t_qbit: int):
-        """
-        Performs the 4d-tensor contraction between qubits and the gate
-        """
-        if not (gate_U.ndim == 4 and gate_U.shape == (2, 2, 2, 2)):
-            raise InvalidGate
-        if not (c_qbit in range(self.n_qubits) and t_qbit in range(self.n_qubits)):
-            raise IndexError
-        if (t_qbit - c_qbit) != 1:
-            raise InvalidOperation
-
-        ## Creating 4d-Tensor from two 2d-Matrices by contraction
-        Mc, Mt = self[c_qbit], self[t_qbit]
-        T1 = np.einsum("ijk , lkm -> ijlm", Mc, Mt)
-
-        ## Applying the 4d-gate on the 4d-tensor
-        T2 = np.einsum("klij, ijmn -> klmn", gate_U, T1)
-
-        ## Singular Value Decomposition
-        U, S, M2 = np.linalg.svd(T2)
-        S = S * np.eye(2)
-        M1 = np.einsum("ijkl, klm, ijl", U, S)
-
-        ## Assign results back to qubits
-        self[c_qbit], self[t_qbit] = M1, M2
-
