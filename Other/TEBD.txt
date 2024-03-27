@@ -1,0 +1,14 @@
+Time-Evolution Block-Decimation (TEBD) Algorithm
+
+        ++ Controlled application of Single/Multi Gates to an MPS
+            * Single qubit gate is exact.
+            * Multi qubit gate incurs small error controlled by the bond_dim.
+
+        ++ References:
+            * https://en.wikipedia.org/wiki/Time-evolving_block_decimation
+            * https://www.youtube.com/watch?v=fq3_7vBcj3g&list=PLwNflrkTO97K1Uj1W09W84mz-U7fWy2VW&index=4&t=2103s
+             from the minute 57:00 onwards
+
+            * A Practical Introduction to Tensor Networks, Sec. 7.2
+            * Efficient simulation of one-dimensional quantum many-body systems
+            * Efficient classical simulation of slightly entangled quantum computations
