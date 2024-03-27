@@ -73,6 +73,7 @@ class MPS:
             raise InitializationError("num_qubits must be positive integer")
 
         self.n_qubits: int = num_qubits
+        self._prints_: bool = True
         self.index = 0
 
         ## Initializing Tensors
@@ -115,6 +116,24 @@ class MPS:
 
     def __str__(self):
         return "\n\n".join([str(q) for q in self.tensors])
+
+    def execution_time(func: callable):
+        from datetime import datetime
+
+        def wrapper(self, *args, **kwargs):
+            ## Calculate execution time (delta)
+            begin = datetime.now()
+            func(*args, **kwargs)
+            end = datetime.now()
+            delta = (end - begin).microseconds
+
+            ## Update objects last event
+            last_event: dict = self.history[-1]
+            last_event["exec_time"] = delta
+            if self._print_:
+                print(f"{func.__name__} Execution time: {delta} microseconds")
+
+        return wrapper
 
     def initialize(self, arr: [bool]):
         """
@@ -235,7 +254,7 @@ class MPS:
         ## Increase time step
         self.time_step += 1
 
-    @runtime
+    @execution_time
     def TEBD(self, op: str, param=None, *qubits):
         """
         Time-Evolution Block-Decimation (TEBD) Algorithm
