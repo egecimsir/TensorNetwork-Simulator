@@ -20,7 +20,6 @@ def createRotationalUnitary(op: str, theta: float) -> np.ndarray:
     if op[-1] not in ["X", "Y", "Z"]:
         raise ValueError("Invalid operation.")
     axis = op[-1]
-
     sin = np.sin
     cos = np.cos
     exp = np.exp
@@ -35,17 +34,8 @@ def createRotationalUnitary(op: str, theta: float) -> np.ndarray:
     if axis == "Z":
         gate = np.array([[exp(-1j * theta / 2), 0],
                          [0, exp(1j * theta / 2)]], dtype=complex)
-
     return gate
 
 
-def runtime(func: callable):
-    from datetime import datetime
-    def wrapper(*args, **kwargs):
-        begin = datetime.now()
-        func(*args, **kwargs)
-        end = datetime.now()
-        delta = (end - begin)
-        print(f"{func.__name__} runtime: {delta:.4f}s")
-
-    return wrapper
+def to_int_list(state) -> [int]:
+    return [int(i) for i in list(state)]

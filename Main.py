@@ -1,8 +1,9 @@
 import numpy as np
-from MatrixProductState import MPS
+from MatrixProductState import MatrixProductState
 
 if __name__ == "__main__":
-    ##qc = MPS(5, (0,1,1,0,0))
-    ##print(qc)
-    ##qc.availableOps(True)
-    pass
+
+    mps = MatrixProductState(4)
+    mps.get_amplitude_of("0000")
+
+
