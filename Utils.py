@@ -20,7 +20,6 @@ def createRotationalUnitary(op: str, theta: float) -> np.ndarray:
     if op[-1] not in ["X", "Y", "Z"]:
         raise ValueError("Invalid operation.")
     axis = op[-1]
-
     sin = np.sin
     cos = np.cos
     exp = np.exp
@@ -35,6 +34,12 @@ def createRotationalUnitary(op: str, theta: float) -> np.ndarray:
     if axis == "Z":
         gate = np.array([[exp(-1j * theta / 2), 0],
                          [0, exp(1j * theta / 2)]], dtype=complex)
-
     return gate
+
+
+def string_to_int_list(string: str) -> [int]:
+    try:
+        return [int(i) for i in list(string)]
+    except ValueError:
+        raise ValueError("Inputs must be a list of boolean values")
 

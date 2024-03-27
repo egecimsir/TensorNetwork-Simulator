@@ -6,16 +6,16 @@ class TestMPS(unittest.TestCase):
 
     def setUp(self):
         ## MPS with different n_qubits
-        self.qc1 = MPS(1)
-        self.qc2 = MPS(2)
-        self.qc3 = MPS(3)
-        self.qc5 = MPS(5)
-        self.qc7 = MPS(7)
-        self.qc21 = MPS(21)
-        self.qc31 = MPS(31)
+        self.qc1 = MatrixProductState(1)
+        self.qc2 = MatrixProductState(2)
+        self.qc3 = MatrixProductState(3)
+        self.qc5 = MatrixProductState(5)
+        self.qc7 = MatrixProductState(7)
+        self.qc21 = MatrixProductState(21)
+        self.qc31 = MatrixProductState(31)
 
         ## All available gate operations
-        self.operations = MPS.available_ops()
+        self.operations = MatrixProductState.available_ops()
 
         ## Test qc.time_step
         ## Test qc.history

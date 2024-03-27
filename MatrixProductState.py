@@ -3,15 +3,11 @@ from Utils import *
 from Exceptions import *
 
 
-class MPS:
+class TensorNetworks:
     """
-    Matrix Product State Representation of a Quantum Circuit
+    Base class for Matrix Product States
     """
-    ## TODO: Track bond_dims of qubits
-    ## TODO: Improve exceptions
-
-    ops: list = ["X", "Y", "Z", "H", "RX", "RY", "RZ"]
-    controlled_ops: list = ["C" + op for op in ops]
+    name: str = "???"
     BaseQuantumGates = {
         "X": np.array([[0, 1],
                        [1, 0]], dtype=complex),
@@ -22,6 +18,8 @@ class MPS:
         "H": np.array([[1, 1],
                        [1, -1]], dtype=complex) / 2 ** (1 / 2),
     }
+    ops: list = ["X", "Y", "Z", "H", "RX", "RY", "RZ"]
+    controlled_ops: list = ["C" + op for op in ops]
 
     @classmethod
     def available_ops(cls, _print_=False) -> list:
@@ -56,7 +54,7 @@ class MPS:
             if parametrized:
                 gate_unitary[:2, :2] = createRotationalUnitary(op=op, theta=param)
             else:
-                U = MPS.BaseQuantumGates[op]
+                U = cls.BaseQuantumGates[op]
                 gate_unitary[:2, :2] = U
             gate_unitary.reshape(2, 2, 2, 2)
 
@@ -64,28 +62,17 @@ class MPS:
             if parametrized:
                 gate_unitary = createRotationalUnitary(op=op, theta=param)
             else:
-                gate_unitary = MPS.BaseQuantumGates[op]
+                gate_unitary = cls.BaseQuantumGates[op]
 
         return gate_unitary
 
-    def __init__(self, num_qubits: int, state=None):
-        if num_qubits <= 0:
-            raise InitializationError("num_qubits must be positive integer")
+    def __init__(self, num_qubits, name=name):
+        self.name = name
+        self.index = 0
+        self.activate_prints = True
 
         self.n_qubits: int = num_qubits
-        self._prints_: bool = True
-        self.index = 0
-
-        ## Initializing Tensors
         self.tensors: [np.ndarray] = []
-        if state is None:
-            self.initialize([0 for _ in range(num_qubits)])
-        else:
-            self.initialize(state)
-
-        ## Tracking
-        self.time_step = 0
-        self.history = []
 
     def __getitem__(self, item: int):
         if abs(item) not in range(self.n_qubits):
@@ -108,7 +95,7 @@ class MPS:
             return self.tensors[self.index - 1]
 
     def __repr__(self):
-        st = f"QuantumCircuit({self.n_qubits})\n"
+        st = f"TensorNetwork({self.n_qubits})\n"
         for q in self.tensors:
             __ = f"\n{str(q)}\n\n"
             st = st + __
@@ -119,34 +106,56 @@ class MPS:
 
     def execution_time(func: callable):
         from datetime import datetime
+        from functools import wraps
 
+        @wraps(func)
         def wrapper(self, *args, **kwargs):
             ## Calculate execution time (delta)
             begin = datetime.now()
-            func(*args, **kwargs)
+            event: dict = func(self, *args, **kwargs)
             end = datetime.now()
             delta = (end - begin).microseconds
 
             ## Update objects last event
-            last_event: dict = self.history[-1]
-            last_event["exec_time"] = delta
-            if self._print_:
+            event["exec_time"] = delta
+
+            if self.activate_prints:
                 print(f"{func.__name__} Execution time: {delta} microseconds")
 
         return wrapper
 
-    def initialize(self, arr: [bool]):
+
+class MatrixProductState(TensorNetworks):
+    """
+    Matrix Product State Representation of a Quantum Circuit
+    """
+    name = "MatrixProductState"
+
+    ## TODO: Track bond_dims of qubits
+    ## TODO: Improve exceptions
+
+    def __init__(self, num_qubits: int, state=None, name=name):
+        super().__init__(num_qubits, name)
+        if state is None:
+            self.initialize([0 for _ in range(num_qubits)])
+        else:
+            self.initialize(state)
+
+        ## Tracking
+        self.time_step = 0
+        self.event_log = []
+
+    def initialize(self, state: [bool]):
         """
         Initialize the circuit with a given bit string/list
         """
-        if len(arr) != self.n_qubits:
-            raise InitializationError("Number of qubits does not match!")
-        if not np.all(list(map(lambda x: x == 0 or x == 1, arr))):
-            raise ValueError("Initial states must be 0 or 1!")
+        if not self.valid_state(state):
+            raise InitializationError("Invalid state!")
 
-        arr = list(map(int, arr))
+        arr = state
+
         for i in range(self.n_qubits):
-            qubit = MPS.qubit(arr[i])
+            qubit = TensorNetworks.qubit(arr[i])
             if i == 0 or i == self.n_qubits - 1:
                 ## Edge qubits must be rank-2, others rank-3
                 qubit = qubit[:, :, 0]
@@ -171,17 +180,20 @@ class MPS:
 
         return np.all(results)
 
-    def get_amplitude_of(self, state) -> float:
+    def valid_state(self, state: str) -> bool:
+        state = string_to_int_list(state)
+        return len(state) != self.n_qubits and np.all(list(map(lambda x: x == 0 or x == 1, state)))
+
+    def get_amplitude_of(self, state: str) -> float:
         """
         Get the amplitude of a specific qubit by using np.einsum
         """
-        if len(state) != self.n_qubits:
-            raise InitializationError
-        if not np.all(list(map(lambda x: x == 0 or x == 1, state))):
-            raise ValueError("States must be 0 or 1")
+        if not self.valid_state(state):
+            raise ValueError("Input state is not valid!")
+
+        arr = string_to_int_list(state)
 
         ## Set the basis-state indices of qubits
-        arr = list(map(int, state))
         for i, state in enumerate(arr):
             self[i] = self[i][state]
 
@@ -254,7 +266,7 @@ class MPS:
         ## Increase time step
         self.time_step += 1
 
-    @execution_time
+    @TensorNetworks.execution_time
     def TEBD(self, op: str, param=None, *qubits):
         """
         Time-Evolution Block-Decimation (TEBD) Algorithm
@@ -276,15 +288,16 @@ class MPS:
         """
         if not (len(qubits) == 1 or len(qubits) == 2):
             raise ValueError("Only one or two qubit operations are supported")
-        if op not in MPS.available_ops():
+        if op not in TensorNetworks.available_ops():
             raise InvalidOperation("Operation not available!")
         if param is not None and "R" not in op:
             raise InvalidOperation("Only rotational gates (R_, CR_) can have parameters")
 
-        event = {}
+        ## Create an event for recording
+        event: dict = {}
 
         ## Create the desired unitary matrix
-        gate: np.ndarray = MPS.create_unitary(op=op, param=param)
+        gate: np.ndarray = TensorNetworks.create_unitary(op=op, param=param)
 
         ## Apply the unitary gates & Create events
         if len(qubits) == 1:
@@ -298,5 +311,7 @@ class MPS:
                          unitary=gate, c_qubit=qubits[0], t_qubit=qubits[1])
 
         ## Update history with current event
-        self.history.append(event)
+        self.event_log.append(event)
         self.time_step += 1
+
+        return event

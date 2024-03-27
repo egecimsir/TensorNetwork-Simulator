@@ -1,13 +1,10 @@
 import numpy as np
-from MatrixProductState import MPS
+from MatrixProductState import MatrixProductState
 
 if __name__ == "__main__":
-    ##qc = MPS(5, (0,1,1,0,0))
+    mps = MatrixProductState(3)
+    mps.TEBD("H", None, 1)
+    print(mps)
 
-    qc = MPS(3)
-    print(qc)
-
-    qc.TEBD("H", None, 1)
-    print(qc)
-
-    qc.get_amplitude_of("101")
+    event = mps.event_log[-1]
+    print(event)
