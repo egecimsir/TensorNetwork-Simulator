@@ -37,9 +37,5 @@ def createRotationalUnitary(op: str, theta: float) -> np.ndarray:
     return gate
 
 
-def string_to_int_list(string: str) -> [int]:
-    try:
-        return [int(i) for i in list(string)]
-    except ValueError:
-        raise ValueError("Inputs must be a list of boolean values")
-
+def to_int_list(state) -> [int]:
+    return [int(i) for i in list(state)]

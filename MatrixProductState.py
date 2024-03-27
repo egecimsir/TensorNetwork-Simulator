@@ -24,6 +24,7 @@ class TensorNetworks:
     @classmethod
     def available_ops(cls, _print_=False) -> list:
         allOps = cls.ops + cls.controlled_ops
+        allOps.append("SWAP")
         if _print_:
             print(f"Available Operations: {allOps}")
         return allOps
@@ -69,10 +70,14 @@ class TensorNetworks:
     def __init__(self, num_qubits, name=name):
         self.name = name
         self.index = 0
-        self.activate_prints = True
+        self.print_OUT = True
 
         self.n_qubits: int = num_qubits
         self.tensors: [np.ndarray] = []
+
+        ## Tracking
+        self.time_step = 0
+        self.event_log = []
 
     def __getitem__(self, item: int):
         if abs(item) not in range(self.n_qubits):
@@ -104,6 +109,13 @@ class TensorNetworks:
     def __str__(self):
         return "\n\n".join([str(q) for q in self.tensors])
 
+    def valid_state(self, state) -> bool:
+        state = to_int_list(state)
+
+        qubits_match: bool = len(state) == self.n_qubits
+        all_qubits_binary: bool = np.all(list(map(lambda x: x == 0 or x == 1, state)))
+        return qubits_match and all_qubits_binary
+
     def execution_time(func: callable):
         from datetime import datetime
         from functools import wraps
@@ -119,94 +131,11 @@ class TensorNetworks:
             ## Update objects last event
             event["exec_time"] = delta
 
-            if self.activate_prints:
-                print(f"{func.__name__} Execution time: {delta} microseconds")
+            ## Print out
+            if self.print_OUT:
+                print(f"\n{func.__name__} Execution time: {delta} microseconds\n")
 
         return wrapper
-
-
-class MatrixProductState(TensorNetworks):
-    """
-    Matrix Product State Representation of a Quantum Circuit
-    """
-    name = "MatrixProductState"
-
-    ## TODO: Track bond_dims of qubits
-    ## TODO: Improve exceptions
-
-    def __init__(self, num_qubits: int, state=None, name=name):
-        super().__init__(num_qubits, name)
-        if state is None:
-            self.initialize([0 for _ in range(num_qubits)])
-        else:
-            self.initialize(state)
-
-        ## Tracking
-        self.time_step = 0
-        self.event_log = []
-
-    def initialize(self, state: [bool]):
-        """
-        Initialize the circuit with a given bit string/list
-        """
-        if not self.valid_state(state):
-            raise InitializationError("Invalid state!")
-
-        arr = state
-
-        for i in range(self.n_qubits):
-            qubit = TensorNetworks.qubit(arr[i])
-            if i == 0 or i == self.n_qubits - 1:
-                ## Edge qubits must be rank-2, others rank-3
-                qubit = qubit[:, :, 0]
-            self.tensors.append(qubit)
-
-        if not self.check_shapes():
-            raise InitializationError
-
-    def check_shapes(self) -> bool:
-        """
-        Check if the tensors has the correct shape:
-            ++ Boundary Qubits are rank-2
-            ++ Middle Qubits are rank-3
-        """
-        results: [bool] = []
-        for i, tensor in enumerate(self.tensors):
-            if i == 0 or i == self.n_qubits - 1:
-                res = tensor.ndim == 2 and tensor.dtype == complex and tensor.shape == (2, 1)
-            else:
-                res = tensor.ndim == 3 and tensor.dtype == complex and tensor.shape == (2, 1, 1)
-            results.append(res)
-
-        return np.all(results)
-
-    def valid_state(self, state: str) -> bool:
-        state = string_to_int_list(state)
-        return len(state) != self.n_qubits and np.all(list(map(lambda x: x == 0 or x == 1, state)))
-
-    def get_amplitude_of(self, state: str) -> float:
-        """
-        Get the amplitude of a specific qubit by using np.einsum
-        """
-        if not self.valid_state(state):
-            raise ValueError("Input state is not valid!")
-
-        arr = string_to_int_list(state)
-
-        ## Set the basis-state indices of qubits
-        for i, state in enumerate(arr):
-            self[i] = self[i][state]
-
-        ## Contract middle qubits
-        res = np.eye(2, dtype=complex)
-        for qubit in self.tensors[1: self.n_qubits - 1]:
-            res = np.matmul(res, qubit)
-
-        ## Contract edge qubits
-        res = res @ self.tensors[-1]
-        res = self.tensors[0] @ res
-
-        return res
 
     def apply_gate(self, gate_U: np.ndarray, qbit: int):
         """
@@ -249,6 +178,79 @@ class MatrixProductState(TensorNetworks):
         ## Assign results back to qubits
         self[c_qbit], self[t_qbit] = M1, M2
 
+
+## TODO: Track bond_dims of qubits
+## TODO: Improve exceptions
+class MatrixProductState(TensorNetworks):
+    """
+    Matrix Product State Representation of a Quantum Circuit
+    """
+    name = "MatrixProductState"
+
+    def __init__(self, num_qubits: int, state=None, name=name):
+        super().__init__(num_qubits, name)
+        if state is None:
+            self.initialize([0 for _ in range(self.n_qubits)])
+        else:
+            self.initialize(state)
+
+    def initialize(self, state):
+        """
+        Initialize the circuit with a given bit string/list
+        """
+        if not self.valid_state(state):
+            raise InitializationError
+
+        arr = to_int_list(state)
+        for i in range(self.n_qubits):
+            qubit = TensorNetworks.qubit(arr[i])
+            if i == 0 or i == self.n_qubits - 1:
+                ## Edge qubits must be rank-2, others rank-3
+                qubit = qubit[:, :, 0]
+            self.tensors.append(qubit)
+
+        if not self.check_shapes():
+            raise InitializationError
+
+    def check_shapes(self) -> bool:
+        """
+        Check if the tensors has the correct shape:
+            ++ Boundary Qubits are rank-2
+            ++ Middle Qubits are rank-3
+        """
+        results: [bool] = []
+        for i, tensor in enumerate(self.tensors):
+            if i == 0 or i == self.n_qubits - 1:
+                res = tensor.ndim == 2 and tensor.dtype == complex and tensor.shape == (2, 1)
+            else:
+                res = tensor.ndim == 3 and tensor.dtype == complex and tensor.shape == (2, 1, 1)
+            results.append(res)
+
+        return np.all(results)
+
+    def get_amplitude_of(self, state: str) -> float:
+        """
+        Get the amplitude of a specific qubit by using np.einsum
+        """
+        if not self.valid_state(state):
+            raise InitializationError
+
+        arr = to_int_list(state)
+        ## Set the basis-state indices of qubits
+        for i, state in enumerate(arr):
+            self[i] = self[i][state]
+
+        ## Contract middle qubits
+        res = np.eye(2, dtype=complex)
+        for qubit in self.tensors[1: self.n_qubits - 1]:
+            res = np.matmul(res, qubit)
+
+        ## Contract edge qubits
+        res = res @ self.tensors[-1]
+        res = self.tensors[0] @ res
+
+        return res
+
     def SWAP(self, q1: int, q2: int):
         """
         Swaps two sequential qubits.
@@ -263,11 +265,22 @@ class MatrixProductState(TensorNetworks):
         self[q1] = self[q2]
         self[q2] = temp
 
+        ## Create event
+        event = dict(time_step=self.time_step + 1,
+                     op="SWAP",
+                     param=None,
+                     unitary=None,
+                     c_qubit=q1,
+                     t_qubit=q2)
+
         ## Increase time step
+        self.event_log.append(event)
         self.time_step += 1
 
+        return event
+
     @TensorNetworks.execution_time
-    def TEBD(self, op: str, param=None, *qubits):
+    def TEBD(self, op: str, qubits, param=None):
         """
         Time-Evolution Block-Decimation (TEBD) Algorithm
 
@@ -286,8 +299,18 @@ class MatrixProductState(TensorNetworks):
 
         ## TODO: Track Fidelity
         """
-        if not (len(qubits) == 1 or len(qubits) == 2):
-            raise ValueError("Only one or two qubit operations are supported")
+
+        ## Check input conditions
+        if type(qubits) is list:
+            if not (len(qubits) == 1 or len(qubits) == 2):
+                raise ValueError("Only one or two qubit operations are supported")
+        elif type(qubits) is int:
+            if qubits not in range(self.n_qubits):
+                raise IndexError
+            qubits = [qubits]
+        else:
+            raise InvalidOperation
+
         if op not in TensorNetworks.available_ops():
             raise InvalidOperation("Operation not available!")
         if param is not None and "R" not in op:
@@ -295,20 +318,29 @@ class MatrixProductState(TensorNetworks):
 
         ## Create an event for recording
         event: dict = {}
-
         ## Create the desired unitary matrix
         gate: np.ndarray = TensorNetworks.create_unitary(op=op, param=param)
 
-        ## Apply the unitary gates & Create events
+        ## Apply Single Qubit Gate
         if len(qubits) == 1:
             self.apply_gate(gate_U=gate, qbit=qubits[0])
-            event = dict(time_step=self.time_step + 1, op=op, param=param,
-                         unitary=gate, c_qubit=None, t_qubit=qubits[0])
-
+            event = dict(time_step=self.time_step + 1,
+                         op=op,
+                         param=param,
+                         unitary=gate,
+                         c_qubit=None,
+                         t_qubit=qubits[0],
+                         exec_time=None)
+        ## Apply Multi Qubit Gate
         elif len(qubits) == 2:
             self.apply_controlled(gate_U=gate, c_qbit=qubits[0], t_qbit=qubits[1])
-            event = dict(time_step=self.time_step + 1, op=op, param=param,
-                         unitary=gate, c_qubit=qubits[0], t_qubit=qubits[1])
+            event = dict(time_step=self.time_step + 1,
+                         op=op,
+                         param=param,
+                         unitary=gate,
+                         c_qubit=qubits[0],
+                         t_qubit=qubits[1],
+                         exec_time=None)
 
         ## Update history with current event
         self.event_log.append(event)
