@@ -57,9 +57,9 @@ class MatrixProductState(TensorNetworks):
         Performs the matrix multiplication: gate_U * tensor
         """
         if not (gate_U.ndim == 2 and gate_U.shape == (2, 2)):
-            raise InvalidGate
-        if not isUnitary(gate_U):
-            raise InvalidGate
+            raise InvalidGate(f"Invalid gate:\n {gate_U}\n")
+        if not (isUnitary(gate_U) and gate_U.dtype == complex):
+            raise InvalidGate("Invalid gate")
         if qbit not in range(self.n_qubits):
             raise IndexError
 
@@ -72,7 +72,9 @@ class MatrixProductState(TensorNetworks):
         Performs the 4d-tensor contraction between qubits and the gate
         """
         if not (gate_U.ndim == 4 and gate_U.shape == (2, 2, 2, 2)):
-            raise InvalidGate
+            raise InvalidGate(f"Invalid gate:\n {gate_U}\n")
+        if not (isUnitary(gate_U) and gate_U.dtype == complex):
+            raise InvalidGate("Invalid gate")
         if not (c_qbit in range(self.n_qubits) and t_qbit in range(self.n_qubits)):
             raise IndexError
         if (t_qbit - c_qbit) != 1:

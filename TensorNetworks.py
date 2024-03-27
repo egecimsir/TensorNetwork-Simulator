@@ -56,7 +56,7 @@ class TensorNetworks:
             if parametrized:
                 gate_unitary[:2, :2] = createRotationalUnitary(op=op, theta=param)
             else:
-                U = cls.BaseQuantumGates[op]
+                U = cls.BaseQuantumGates[op[-1]]
                 gate_unitary[:2, :2] = U
             gate_unitary.reshape(2, 2, 2, 2)
 
@@ -74,7 +74,7 @@ class TensorNetworks:
 
         self.n_qubits: int = num_qubits
         self.tensors: [np.ndarray] = []
-        self.basis_states: [np.ndarray] = self.get_basis_states()
+        self.basis_states = tuple([bin(i)[2:].zfill(self.n_qubits) for i in range(2 ** self.n_qubits)])
 
         ## Tracking
         self.time_step = 0
@@ -112,6 +112,14 @@ class TensorNetworks:
     def __str__(self):
         return "\n\n".join([str(q) for q in self.tensors])
 
+    @property
+    def get_tensors(self):
+        return self.tensors
+
+    @property
+    def get_basis_states(self) -> tuple:
+        return self.basis_states
+
     def print_out(self) -> str:
         print(self)
         return str(self)
@@ -122,9 +130,6 @@ class TensorNetworks:
         all_qubits_binary: bool = np.all(list(map(lambda x: x == 0 or x == 1, state)))
 
         return qubits_match and all_qubits_binary
-
-    def get_basis_states(self) -> tuple:
-        return tuple([bin(i)[2:].zfill(self.n_qubits) for i in range(2 ** self.n_qubits)])
 
     def execute(func: callable) -> callable:
         from datetime import datetime
