@@ -15,7 +15,7 @@ class TestMPS(unittest.TestCase):
         self.qc31 = MPS(31)
 
         ## All available gate operations
-        self.operations = MPS.availableOps()
+        self.operations = MPS.available_ops()
 
         ## Test qc.time_step
         ## Test qc.history
@@ -29,7 +29,7 @@ class TestMPS(unittest.TestCase):
         c_ops = ["C" + op for op in ops]
         all_ops = ops + c_ops
 
-        self.assertEqual(self.qc1.availableOps(), all_ops)
+        self.assertEqual(self.qc1.available_ops(), all_ops)
 
     def test_qubit(self):
         ## TODO: Implement
@@ -44,10 +44,6 @@ class TestMPS(unittest.TestCase):
         pass
 
     def test_checkShapes(self):
-        ## TODO: Implement
-        pass
-
-    def test_assignQubits(self):
         ## TODO: Implement
         pass
 
@@ -70,7 +66,7 @@ class TestMPS(unittest.TestCase):
 
     def test_getAmplitudeOfState(self):
         ## TODO: Implement
-        self.assertEqual(self.qc1.getAmplitudeOfState(...), ..., ...)
+        self.assertEqual(self.qc1.get_amplitude_of(...), ..., ...)
         pass
 
 

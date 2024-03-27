@@ -24,7 +24,7 @@ class MPS:
     }
 
     @classmethod
-    def availableOps(cls, _print_=False) -> list:
+    def available_ops(cls, _print_=False) -> list:
         allOps = cls.ops + cls.controlled_ops
         if _print_:
             print(f"Available Operations: {allOps}")
@@ -40,12 +40,12 @@ class MPS:
         return np.eye(2, dtype=complex)[state].reshape(2, 1, 1)
 
     @classmethod
-    def createUnitary(cls, op: str, param=None) -> np.ndarray:
+    def create_unitary(cls, op: str, param=None) -> np.ndarray:
         """
         Creates a unitary gate with given operation name and parameters.
         """
         if op not in cls.ops + cls.controlled_ops:
-            raise InvalidOperationException
+            raise InvalidOperation
 
         gate_unitary: np.ndarray
         controlled: bool = op in cls.controlled_ops
@@ -70,7 +70,7 @@ class MPS:
 
     def __init__(self, num_qubits: int, state=None):
         if num_qubits <= 0:
-            raise ValueError("num_qubits must be positive integer")
+            raise InitializationError("num_qubits must be positive integer")
 
         self.n_qubits: int = num_qubits
         self.index = 0
@@ -121,9 +121,9 @@ class MPS:
         Initialize the circuit with a given bit string/list
         """
         if len(arr) != self.n_qubits:
-            raise UnmatchedQubitsException
+            raise InitializationError("Number of qubits does not match!")
         if not np.all(list(map(lambda x: x == 0 or x == 1, arr))):
-            raise ValueError("Initial states must be 0 or 1")
+            raise ValueError("Initial states must be 0 or 1!")
 
         arr = list(map(int, arr))
         for i in range(self.n_qubits):
@@ -133,10 +133,10 @@ class MPS:
                 qubit = qubit[:, :, 0]
             self.tensors.append(qubit)
 
-        if not self.checkShapes():
-            raise InitializationException
+        if not self.check_shapes():
+            raise InitializationError
 
-    def checkShapes(self) -> bool:
+    def check_shapes(self) -> bool:
         """
         Check if the tensors has the correct shape:
             ++ Boundary Qubits are rank-2
@@ -152,46 +152,39 @@ class MPS:
 
         return np.all(results)
 
-    def assignQubits(self, arr: [bool]):
-        """
-        Assigning classical state values {0, 1} to each qubit of the circuit
-        """
-        if len(arr) != self.n_qubits:
-            raise UnmatchedQubitsException
-        if not np.all(list(map(lambda x: x == 0 or x == 1, arr))):
-            raise ValueError("States must be 0 or 1")
-
-        arr = list(map(int, arr))
-        for i, state in enumerate(arr):
-            self[i] = self[i][state]
-
-    def getAmplitudeOfState(self, state):
+    def get_amplitude_of(self, state) -> float:
         """
         Get the amplitude of a specific qubit by using np.einsum
         """
         if len(state) != self.n_qubits:
-            raise UnmatchedQubitsException
+            raise InitializationError
         if not np.all(list(map(lambda x: x == 0 or x == 1, state))):
             raise ValueError("States must be 0 or 1")
 
         ## Set the basis-state indices of qubits
-        self.assignQubits(state)
+        arr = list(map(int, state))
+        for i, state in enumerate(arr):
+            self[i] = self[i][state]
 
-        ## Contract  qubits
+        ## Contract middle qubits
         res = np.eye(2, dtype=complex)
         for qubit in self.tensors[1: self.n_qubits - 1]:
             res = np.matmul(res, qubit)
 
+        ## Contract edge qubits
         res = res @ self.tensors[-1]
         res = self.tensors[0] @ res
 
         return res
 
-    def applyGate(self, gate_U: np.ndarray, qbit: int):
+    def apply_gate(self, gate_U: np.ndarray, qbit: int):
+        """
+        Performs the matrix multiplication: gate_U * tensor
+        """
         if not (gate_U.ndim == 2 and gate_U.shape == (2, 2)):
-            raise InvalidGateException
+            raise InvalidGate
         if not isUnitary(gate_U):
-            raise InvalidGateException
+            raise InvalidGate
         if qbit not in range(self.n_qubits):
             raise IndexError
 
@@ -199,13 +192,16 @@ class MPS:
         tensor = self[qbit]
         self[qbit] = np.einsum("lk, kij -> lij", gate_U, tensor)
 
-    def applyControlled(self, gate_U: np.ndarray, c_qbit: int, t_qbit: int):
+    def apply_controlled(self, gate_U: np.ndarray, c_qbit: int, t_qbit: int):
+        """
+        Performs the 4d-tensor contraction between qubits and the gate
+        """
         if not (gate_U.ndim == 4 and gate_U.shape == (2, 2, 2, 2)):
-            raise InvalidGateException
+            raise InvalidGate
         if not (c_qbit in range(self.n_qubits) and t_qbit in range(self.n_qubits)):
             raise IndexError
         if (t_qbit - c_qbit) != 1:
-            raise UnmatchedQubitsException
+            raise InvalidOperation
 
         ## Creating 4d-Tensor from two 2d-Matrices by contraction
         Mc, Mt = self[c_qbit], self[t_qbit]
@@ -229,11 +225,15 @@ class MPS:
         if not (q1 in range(self.n_qubits) and q2 in range(self.n_qubits)):
             raise IndexError
         if abs(q1 - q2) != 1:
-            raise UnmatchedQubitsException
+            raise InvalidOperation("Swapped Qubits must be sequential!")
 
+        ## Swap Qubits
         temp = self[q1]
         self[q1] = self[q2]
         self[q2] = temp
+
+        ## Increase time step
+        self.time_step += 1
 
     def TEBD(self, op: str, param=None, *qubits):
         """
@@ -256,26 +256,24 @@ class MPS:
         """
         if not (len(qubits) == 1 or len(qubits) == 2):
             raise ValueError("Only one or two qubit operations are supported")
-        if op not in MPS.availableOps():
-            raise InvalidOperationException
-        if param is not None:
-            if "R" not in op:
-                ## "Rotational Gates (R_, CR_) can have parameters"
-                raise InvalidOperationException
+        if op not in MPS.available_ops():
+            raise InvalidOperation("Operation not available!")
+        if param is not None and "R" not in op:
+            raise InvalidOperation("Only rotational gates (R_, CR_) can have parameters")
 
         event = {}
 
         ## Create the desired unitary matrix
-        gate: np.ndarray = MPS.createUnitary(op=op, param=param)
+        gate: np.ndarray = MPS.create_unitary(op=op, param=param)
 
         ## Apply the unitary gates & Create events
         if len(qubits) == 1:
-            self.applyGate(gate_U=gate, qbit=qubits[0])
+            self.apply_gate(gate_U=gate, qbit=qubits[0])
             event = dict(time_step=self.time_step + 1, op=op, param=param,
                          unitary=gate, c_qubit=None, t_qubit=qubits[0])
 
         elif len(qubits) == 2:
-            self.applyControlled(gate_U=gate, c_qbit=qubits[0], t_qbit=qubits[1])
+            self.apply_controlled(gate_U=gate, c_qbit=qubits[0], t_qbit=qubits[1])
             event = dict(time_step=self.time_step + 1, op=op, param=param,
                          unitary=gate, c_qubit=qubits[0], t_qubit=qubits[1])
 

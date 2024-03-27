@@ -1,16 +1,15 @@
 ## TODO: Extend and improve exceptions
 
-class InvalidOperationException(Exception):
-    pass
+class InvalidOperation(Exception):
+    def __init__(self, message):
+        self.message = message
 
 
-class UnmatchedQubitsException(Exception):
-    pass
+class InitializationError(Exception):
+    def __init__(self, message):
+        self.message = message
 
 
-class InvalidGateException(Exception):
-    pass
-
-
-class InitializationException(Exception):
-    pass
+class InvalidGate(Exception):
+    def __init__(self, message):
+        self.message = message

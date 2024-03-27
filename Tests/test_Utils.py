@@ -35,6 +35,8 @@ class TestUtils(unittest.TestCase):
         self.assertFalse(isUnitary(self.arr5))
         self.assertFalse(isUnitary(self.arr6))
 
+        pass
+
     def test_createRotationalUnitary(self):
         """
         Creates RX, RY, RZ gates for a given string={'X','Y','Z'}
