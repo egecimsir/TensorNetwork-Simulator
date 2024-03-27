@@ -3,9 +3,7 @@ from MatrixProductState import MatrixProductState
 
 if __name__ == "__main__":
 
-    mps = MatrixProductState(3)
-    mps.TEBD("H",  1)
-    print(mps)
+    mps = MatrixProductState(4)
+    mps.get_probabilities()
 
-    event = mps.event_log[-1]
-    print(event)
+

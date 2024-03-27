@@ -69,15 +69,16 @@ class TensorNetworks:
 
     def __init__(self, num_qubits, name=name):
         self.name = name
-        self.index = 0
         self.print_OUT = True
 
         self.n_qubits: int = num_qubits
         self.tensors: [np.ndarray] = []
+        self.basis_states: [np.ndarray] = self.get_basis_states()
 
         ## Tracking
         self.time_step = 0
         self.event_log = []
+        self.index = 0
 
     def __getitem__(self, item: int):
         if abs(item) not in range(self.n_qubits):
@@ -111,12 +112,15 @@ class TensorNetworks:
 
     def valid_state(self, state) -> bool:
         state = to_int_list(state)
-
         qubits_match: bool = len(state) == self.n_qubits
         all_qubits_binary: bool = np.all(list(map(lambda x: x == 0 or x == 1, state)))
+
         return qubits_match and all_qubits_binary
 
-    def execution_time(func: callable):
+    def get_basis_states(self) -> tuple:
+        return tuple([bin(i)[2:].zfill(self.n_qubits) for i in range(2**self.n_qubits)])
+
+    def execution_time(func: callable) -> callable:
         from datetime import datetime
         from functools import wraps
 
@@ -129,7 +133,8 @@ class TensorNetworks:
             delta = (end - begin).microseconds
 
             ## Update objects last event
-            event["exec_time"] = delta
+            if func.__name__ == "TEBD":
+                event["exec_time"] = delta
 
             ## Print out
             if self.print_OUT:
@@ -194,6 +199,22 @@ class MatrixProductState(TensorNetworks):
         else:
             self.initialize(state)
 
+    def check_shapes(self) -> bool:
+        """
+        Check if the tensors has the correct shape:
+            ++ Boundary Qubits are rank-2
+            ++ Middle Qubits are rank-3
+        """
+        results: [bool] = []
+        for i, tensor in enumerate(self.tensors):
+            if i == 0 or i == self.n_qubits - 1:
+                res = tensor.ndim == 2 and tensor.dtype == complex and tensor.shape == (2, 1)
+            else:
+                res = tensor.ndim == 3 and tensor.dtype == complex and tensor.shape == (2, 1, 1)
+            results.append(res)
+
+        return np.all(results)
+
     def initialize(self, state):
         """
         Initialize the circuit with a given bit string/list
@@ -211,22 +232,6 @@ class MatrixProductState(TensorNetworks):
 
         if not self.check_shapes():
             raise InitializationError
-
-    def check_shapes(self) -> bool:
-        """
-        Check if the tensors has the correct shape:
-            ++ Boundary Qubits are rank-2
-            ++ Middle Qubits are rank-3
-        """
-        results: [bool] = []
-        for i, tensor in enumerate(self.tensors):
-            if i == 0 or i == self.n_qubits - 1:
-                res = tensor.ndim == 2 and tensor.dtype == complex and tensor.shape == (2, 1)
-            else:
-                res = tensor.ndim == 3 and tensor.dtype == complex and tensor.shape == (2, 1, 1)
-            results.append(res)
-
-        return np.all(results)
 
     def get_amplitude_of(self, state: str) -> float:
         """
@@ -250,6 +255,14 @@ class MatrixProductState(TensorNetworks):
         res = self.tensors[0] @ res
 
         return res
+
+    def get_probabilities(self):
+        ## TODO: Insert checks
+        amplitudes = []
+        for state in self.basis_states:
+            amplitudes.append(self.get_amplitude_of(state))
+        amplitudes = np.array(amplitudes, dtype=complex)
+        return amplitudes * amplitudes.T.conj()
 
     def SWAP(self, q1: int, q2: int):
         """
