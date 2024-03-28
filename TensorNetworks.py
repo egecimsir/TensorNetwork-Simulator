@@ -129,16 +129,13 @@ class TensorNetworks:
         return str(self)
 
     def valid_state(self, state) -> bool:
-        state = to_int_list(state)
-        qubits_match: bool = len(state) == self.n_qubits
-        all_qubits_binary: bool = np.all(list(map(lambda x: x == 0 or x == 1, state)))
-
-        return qubits_match and all_qubits_binary
+        return state in self.basis_states or state == to_int_list(state)
 
     def execute(func: callable) -> callable:
         from datetime import datetime
         from functools import wraps
 
+        ## TODO: Include checks on shapes
         @wraps(func)
         def wrapper(self, *args, **kwargs):
             ## Calculate execution time (delta)

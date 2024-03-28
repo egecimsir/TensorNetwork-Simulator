@@ -10,5 +10,7 @@ if __name__ == "__main__":
     for d in mps.event_log:
         print(d)
 
+    mps.get_amplitude_of("0101")
+
 
 

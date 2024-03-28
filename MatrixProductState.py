@@ -39,7 +39,7 @@ class MatrixProductState(TensorNetworks):
         Initialize the circuit with a given bit string/list
         """
         if not self.valid_state(state):
-            raise InitializationError
+            raise InitializationError("")
 
         arr = to_int_list(state)
         for i in range(self.n_qubits):
@@ -63,6 +63,7 @@ class MatrixProductState(TensorNetworks):
         if qbit not in range(self.n_qubits):
             raise IndexError("Qubit not in the network!")
 
+        ## TODO: Check einsum string
         ## Tensor contraction
         tensor = self[qbit]
         self[qbit] = np.einsum("lk, kij -> lij", gate_U, tensor)
@@ -85,20 +86,24 @@ class MatrixProductState(TensorNetworks):
 
         ## Creating 4d-Tensor from two 2d-Matrices by contraction
         Mc, Mt = self[c_qbit], self[t_qbit]
+        ## TODO: Check einsum string
         T1 = np.einsum("ijk , lkm -> ijlm", Mc, Mt)
 
         ## Applying the 4d-gate on the 4d-tensor
+        ## TODO: Check einsum string
         T2 = np.einsum("klij, ijmn -> klmn", gate_U, T1)
 
         ## Singular Value Decomposition
         U, S, M2 = np.linalg.svd(T2)
         S = S * np.eye(2)
+        ## TODO: Check einsum string
         M1 = np.einsum("ijkl, klm -> ijl", U, S)
 
         ## Assign results back to qubits
         self[c_qbit], self[t_qbit] = M1, M2
-        if not self.check_shapes():
-            raise InitializationError("Invalid shapes!")
+
+        #if not self.check_shapes():
+        #    raise InitializationError("Invalid shapes!")
 
     @TensorNetworks.execute
     def get_amplitude_of(self, state: str) -> float:
@@ -116,7 +121,8 @@ class MatrixProductState(TensorNetworks):
         ## Contract middle qubits
         res = np.eye(2, dtype=complex)
         for qubit in self.tensors[1: self.n_qubits - 1]:
-            res = np.matmul(res, qubit)
+            ## TODO: Adjust dimensions
+            res = np.einsum("ik, kj -> ij", res, qubit)
 
         ## Contract edge qubits
         res = res @ self.tensors[-1]
