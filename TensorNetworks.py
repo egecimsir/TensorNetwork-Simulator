@@ -44,7 +44,7 @@ class TensorNetworks:
         """
         Creates a unitary gate with given operation name and parameters.
         """
-        if op not in cls.ops + cls.controlled_ops:
+        if op not in cls.available_ops():
             raise InvalidOperation
 
         gate_unitary: np.ndarray
@@ -54,11 +54,11 @@ class TensorNetworks:
         if controlled:
             gate_unitary = np.eye(4, dtype=complex)
             if parametrized:
-                gate_unitary[:2, :2] = createRotationalUnitary(op=op, theta=param)
+                gate_unitary[2:, 2:] = createRotationalUnitary(op=op, theta=param)
             else:
-                U = cls.BaseQuantumGates[op[-1]]
-                gate_unitary[:2, :2] = U
-            gate_unitary.reshape(2, 2, 2, 2)
+                gate_unitary[2:, 2:] = cls.BaseQuantumGates[op[-1]]
+
+            gate_unitary = gate_unitary.reshape(2, 2, 2, 2)
 
         else:  # SingleGate
             if parametrized:
@@ -117,6 +117,10 @@ class TensorNetworks:
         return self.tensors
 
     @property
+    def get_n_qubits(self) -> int:
+        return self.n_qubits
+
+    @property
     def get_basis_states(self) -> tuple:
         return self.basis_states
 
@@ -155,6 +159,6 @@ class TensorNetworks:
 
             ## Print out
             if self.print_OUT:
-                print(f"\n{func.__name__} Execution time: {delta * 1000}ms\n")
+                print(f"\n{func.__name__} exec-time: {delta/1000}ms\n")
 
         return wrapper

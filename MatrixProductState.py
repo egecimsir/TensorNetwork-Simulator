@@ -58,27 +58,30 @@ class MatrixProductState(TensorNetworks):
         """
         if not (gate_U.ndim == 2 and gate_U.shape == (2, 2)):
             raise InvalidGate(f"Invalid gate:\n {gate_U}\n")
-        if not (isUnitary(gate_U) and gate_U.dtype == complex):
-            raise InvalidGate("Invalid gate")
+        if not (gate_U.dtype == complex):
+            raise InvalidGate(f"Invalid gate: type={gate_U.dtype}\n")
         if qbit not in range(self.n_qubits):
-            raise IndexError
+            raise IndexError("Qubit not in the network!")
 
         ## Tensor contraction
         tensor = self[qbit]
         self[qbit] = np.einsum("lk, kij -> lij", gate_U, tensor)
+
+        if not self.check_shapes():
+            raise InitializationError(f"Invalid shapes")
 
     def apply_controlled_gate(self, gate_U: np.ndarray, c_qbit: int, t_qbit: int):
         """
         Performs the 4d-tensor contraction between qubits and the gate
         """
         if not (gate_U.ndim == 4 and gate_U.shape == (2, 2, 2, 2)):
-            raise InvalidGate(f"Invalid gate:\n {gate_U}\n")
-        if not (isUnitary(gate_U) and gate_U.dtype == complex):
-            raise InvalidGate("Invalid gate")
+            raise InvalidGate(f"Invalid gate:\n shape: {gate_U.shape}\n")
+        if not (gate_U.dtype == complex):
+            raise InvalidGate(f"Invalid gate: type={gate_U.dtype}\n")
         if not (c_qbit in range(self.n_qubits) and t_qbit in range(self.n_qubits)):
-            raise IndexError
+            raise IndexError("Qubit not in the network!")
         if (t_qbit - c_qbit) != 1:
-            raise InvalidOperation
+            raise InvalidOperation("Qubits must be sequential!")
 
         ## Creating 4d-Tensor from two 2d-Matrices by contraction
         Mc, Mt = self[c_qbit], self[t_qbit]
@@ -90,10 +93,12 @@ class MatrixProductState(TensorNetworks):
         ## Singular Value Decomposition
         U, S, M2 = np.linalg.svd(T2)
         S = S * np.eye(2)
-        M1 = np.einsum("ijkl, klm, ijl", U, S)
+        M1 = np.einsum("ijkl, klm -> ijl", U, S)
 
         ## Assign results back to qubits
         self[c_qbit], self[t_qbit] = M1, M2
+        if not self.check_shapes():
+            raise InitializationError("Invalid shapes!")
 
     @TensorNetworks.execute
     def get_amplitude_of(self, state: str) -> float:
@@ -166,21 +171,21 @@ class MatrixProductState(TensorNetworks):
         Time-Evolution Block-Decimation (TEBD) Algorithm
         """
         ## TODO: Track Fidelity
-
-        ## Check input conditions
-        if type(qubits) is list:
-            if not (len(qubits) == 1 or len(qubits) == 2):
-                raise ValueError("Only one or two qubit operations are supported")
-        elif type(qubits) is int:
-            if qubits not in range(self.n_qubits):
-                raise IndexError
-            qubits = [qubits]
-        else:
-            raise TypeError("Input must be a list or integer!")
-        if op not in TensorNetworks.available_ops():
-            raise InvalidOperation("Operation not available!")
-        if param is not None and "R" not in op:
-            raise InvalidOperation("Only rotational gates (R_, CR_) can have parameters")
+        if True:
+            ## Check input conditions
+            if type(qubits) is list or type(qubits) is tuple:
+                if not (len(qubits) == 1 or len(qubits) == 2):
+                    raise ValueError("Only one or two qubit operations are supported")
+            elif type(qubits) is int:
+                if qubits not in range(self.n_qubits):
+                    raise IndexError
+                qubits = [qubits]
+            else:
+                raise TypeError(f"Input must be a list or integer! type({type(qubits)})")
+            if op not in TensorNetworks.available_ops():
+                raise InvalidOperation("Operation not available!")
+            if param is not None and "R" not in op:
+                raise InvalidOperation("Only rotational gates (R_, CR_) can have parameters")
 
         ## Create an event for recording
         event: dict = {}
@@ -193,7 +198,6 @@ class MatrixProductState(TensorNetworks):
             event = dict(time_step=self.time_step + 1,
                          op=op,
                          param=param,
-                         unitary=gate,
                          c_qubit=None,
                          t_qubit=qubits[0],
                          exec_time=None)
@@ -203,7 +207,6 @@ class MatrixProductState(TensorNetworks):
             event = dict(time_step=self.time_step + 1,
                          op=op,
                          param=param,
-                         unitary=gate,
                          c_qubit=qubits[0],
                          t_qubit=qubits[1],
                          exec_time=None)
