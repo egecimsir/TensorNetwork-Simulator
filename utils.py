@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def isUnitary(arr: np.ndarray) -> bool:
+def is_unitary(arr: np.ndarray) -> bool:
     """
     Checks if a tensor is unitary
     """
@@ -13,7 +13,16 @@ def isUnitary(arr: np.ndarray) -> bool:
     return np.allclose(eye, arr.dot(arr_t))
 
 
-def createRotationalUnitary(op: str, theta: float) -> np.ndarray:
+def make_qubit(arr) -> np.ndarray:
+    state = np.asarray(arr, dtype=complex)
+    qubit = state / np.linalg.norm(state)
+    if not (is_unitary(state) and len(state) == 2):
+        raise ValueError
+    else:
+        return qubit
+
+
+def create_rotational_unitary(op: str, theta: float) -> np.ndarray:
     """
     Creates RX, RY, RZ gates for a given string={'X','Y','Z'}
     """

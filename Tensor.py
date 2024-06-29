@@ -1,5 +1,7 @@
 import numpy as np
 
+import utils
+
 
 class Tensor:
 
@@ -7,20 +9,17 @@ class Tensor:
     n_bonds: int
 
     @classmethod
-    def qubit(cls, state: int | iter):
-        if type(state) is int:
-            assert state in [0, 1]
+    def qubit(cls, state: int | float | iter):
+        if type(state) in [int, float]:
+            assert int(state) in [0, 1]
             data = np.eye(2, dtype=complex)[state]
         else:
-            assert len(state) == 2
-            assert np.linalg.norm(state) == 1
-            data = np.asarray(state, dtype=complex)
+            data = utils.make_qubit(state)
 
-        return cls(data, bond_dim=1)
+        return cls(data)
 
-    def __init__(self, data, bond_dim):
+    def __init__(self, data=None):
         self.array = np.asarray(data, complex)
-        self._bond_dim = bond_dim
 
         ## Network structure
         self._position: int = 1
@@ -75,5 +74,9 @@ class Tensor:
     def reshape(self, *shape):
         self.array = self.array.reshape(shape)
         return self
+
+    def connect_tensor(self, data, bond_dim):
+        ## Initialize new
+        new_t = Tensor(data)
 
 

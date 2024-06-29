@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from Utils import *
+from utils import *
 
 
 class TestUtils(unittest.TestCase):
@@ -26,14 +26,14 @@ class TestUtils(unittest.TestCase):
 
     def test_isUnitary(self):
         ## Check unitary
-        self.assertTrue(isUnitary(self.arr1))
-        self.assertTrue(isUnitary(self.arr2))
-        self.assertTrue(isUnitary(self.arr3))
+        self.assertTrue(is_unitary(self.arr1))
+        self.assertTrue(is_unitary(self.arr2))
+        self.assertTrue(is_unitary(self.arr3))
 
         ## Check non-unitary
-        self.assertFalse(isUnitary(self.arr4))
-        self.assertFalse(isUnitary(self.arr5))
-        self.assertFalse(isUnitary(self.arr6))
+        self.assertFalse(is_unitary(self.arr4))
+        self.assertFalse(is_unitary(self.arr5))
+        self.assertFalse(is_unitary(self.arr6))
 
         pass
 
@@ -56,13 +56,13 @@ class TestUtils(unittest.TestCase):
         Z = np.array([[exp(-1j * theta / 2), 0],
                       [0, exp(1j * theta / 2)]], dtype=complex)
 
-        self.assertEqual(X, createRotationalUnitary(op="X", theta=theta))
-        self.assertEqual(X, createRotationalUnitary(op="RX", theta=theta))
+        self.assertEqual(X, create_rotational_unitary(op="X", theta=theta))
+        self.assertEqual(X, create_rotational_unitary(op="RX", theta=theta))
 
-        self.assertEqual(Y, createRotationalUnitary(op="Y", theta=theta))
-        self.assertEqual(Y, createRotationalUnitary(op="RY", theta=theta))
+        self.assertEqual(Y, create_rotational_unitary(op="Y", theta=theta))
+        self.assertEqual(Y, create_rotational_unitary(op="RY", theta=theta))
 
-        self.assertEqual(Z, createRotationalUnitary(op="Z", theta=theta))
-        self.assertEqual(Z, createRotationalUnitary(op="RZ", theta=theta))
+        self.assertEqual(Z, create_rotational_unitary(op="Z", theta=theta))
+        self.assertEqual(Z, create_rotational_unitary(op="RZ", theta=theta))
 
         pass
