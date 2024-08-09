@@ -1,4 +1,5 @@
 import numpy as np
+import einops
 from Tensor import Tensor
 
 
@@ -22,7 +23,7 @@ class MPS:
             if i == 0:
                 tensor = Tensor.qubit(0).reshape(2, self.bond_dims[i])
             elif i == n_qubits-1:
-                tensor = Tensor.qubit(0).reshape(2, 1, self.bond_dims[i-1])
+                tensor = Tensor.qubit(0).reshape(2, self.bond_dims[i-1])
             else:
                 tensor = Tensor.qubit(0).reshape(2, self.bond_dims[i-1], self.bond_dims[i])
 
@@ -43,7 +44,18 @@ class MPS:
     def __setitem__(self, key, value):
         self.tensors[key] = value
 
+    def __iter__(self):
+        self.index = 0
+        return self.index
+
+    def __next__(self):
+        if self.index < len(self.tensors):
+            t = self.tensors[self.index]
+            self.index += 1
+            return t
+        else:
+            raise StopIteration
+
     def retrieve_amplitude_of(self, state):
         pass
-
 

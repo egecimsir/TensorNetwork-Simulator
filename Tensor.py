@@ -1,4 +1,5 @@
 import numpy as np
+import einops
 import utils
 
 
@@ -46,6 +47,10 @@ class Tensor:
     @property
     def dtype(self):
         return self.array.dtype
+
+    @property
+    def conj(self):
+        return self.array.conjugate()
 
     def reshape(self, *shape):
         self.array = self.array.reshape(shape)
