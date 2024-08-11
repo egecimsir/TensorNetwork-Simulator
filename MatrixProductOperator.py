@@ -6,6 +6,9 @@ from MatrixProductState import MPS
 
 class MPO:
 
+    physical_bond = 2
+    n_bonds = 2
+
     @classmethod
     def from_circuit(cls, *args):
         ## TODO

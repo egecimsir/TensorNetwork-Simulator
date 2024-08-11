@@ -9,9 +9,8 @@ class MPS:
     n_bonds = 2
 
     def __init__(self, n_qubits, bond_dims=None):
-        self.tensors = []
         self.n_qubits = n_qubits
-        self.bond_dims = []
+        self.tensors = []
 
         if bond_dims is not None:
             assert len(bond_dims) + 1 == self.n_qubits
@@ -56,6 +55,22 @@ class MPS:
         else:
             raise StopIteration
 
-    def retrieve_amplitude_of(self, state):
-        pass
+    def retrieve_amplitude_of(self, state: str):
+        assert len(state) == self.n_qubits
+        tensors = list([])
+
+        ## Fix physical indices
+        for s in range(len(state)):
+            idx = int(state[s])
+            arr = self.tensors[s][idx]
+            tensors.append(arr)
+
+        ## Matrix-Vector products
+        row_vec = tensors.pop(0)
+        col_vec = tensors.pop(-1)
+
+        for mat in tensors:
+            row_vec = np.einsum("i, ij -> j", row_vec, mat)
+
+        return row_vec @ col_vec
 
