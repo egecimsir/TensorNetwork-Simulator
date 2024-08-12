@@ -1,19 +1,18 @@
 import numpy as np
-import einops
 from Tensor import Tensor
 from MatrixProductState import MPS
 
 
 class MPO:
-
     physical_bond = 2
     n_bonds = 2
 
+    ## TODO:
     @classmethod
     def from_circuit(cls, *args):
-        ## TODO
         return cls(*args)
 
+    ## TODO:
     def __init__(self, n_qubits, bond_dims=None):
         self.n_qubits = n_qubits
         self.bond_dims = bond_dims
@@ -27,13 +26,9 @@ class MPO:
             else:
                 pass
 
+    ## TODO:
     def __call__(self, mps: MPS) -> MPS:
         self.check_input_mps(mps)
-
-        for i, tensor in enumerate(mps):
-            ## TODO
-            self.apply_transformation(tensor)
-
         return mps
 
     def __repr__(self):
@@ -53,6 +48,3 @@ class MPO:
             return True
         else:
             return False
-
-    def apply_transformation(self, t: Tensor):
-        pass

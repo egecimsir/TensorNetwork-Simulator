@@ -1,17 +1,15 @@
 import numpy as np
-import einops
 from Tensor import Tensor
 
 
 class MPS:
-
     physical_bond = 1
     n_bonds = 2
 
+    ## TODO ??
     @classmethod
     def from_amplitude(cls, tensor):
         """Apply SVD step by step throughout the tensor"""
-        ## TODO: ??
         pass
 
     def __init__(self, n_qubits, bond_dims=None):
@@ -27,10 +25,10 @@ class MPS:
         for i in range(n_qubits):
             if i == 0:
                 tensor = Tensor.qubit(0).reshape(2, self.bond_dims[i])
-            elif i == n_qubits-1:
-                tensor = Tensor.qubit(0).reshape(2, self.bond_dims[i-1])
+            elif i == n_qubits - 1:
+                tensor = Tensor.qubit(0).reshape(2, self.bond_dims[i - 1])
             else:
-                tensor = Tensor.qubit(0).reshape(2, self.bond_dims[i-1], self.bond_dims[i])
+                tensor = Tensor.qubit(0).reshape(2, self.bond_dims[i - 1], self.bond_dims[i])
 
             self.tensors.append(tensor)
 
@@ -79,6 +77,7 @@ class MPS:
 
         return row_vec @ col_vec
 
+    ## TODO
     def set_bond_dims(self, dims: iter):
         assert 1 not in dims  ## bond_dims can't be 1
         pass
