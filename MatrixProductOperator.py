@@ -28,6 +28,12 @@ class MPO:
 
     ## TODO:
     def __call__(self, mps: MPS) -> MPS:
+        """
+        Multiplies the given MPS with the MPO.
+        --------------------------------------
+        :param mps: MPS to be evolved.
+        :return: evolved MPS
+        """
         self.check_input_mps(mps)
         return mps
 
