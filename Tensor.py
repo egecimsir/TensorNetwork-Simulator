@@ -1,12 +1,14 @@
 import numpy as np
-import utils
+from utils import create_rotational_unitary
 
 
 ## Base Quantum Gates
-X = np.array([[0, 1], [1, 0]], dtype=complex),
-Y = np.array([[0, -1j], [1j, 0]], dtype=complex),
-Z = np.array([[1, 0], [0, -1]], dtype=complex),
-H = np.array([[1, 1], [1, -1]], dtype=complex) / 2 ** (1 / 2)
+BaseQuantumGates = {
+    "X": np.array([[0, 1], [1, 0]], dtype=complex),
+    "Y": np.array([[0, -1j], [1j, 0]], dtype=complex),
+    "Z": np.array([[1, 0], [0, -1]], dtype=complex),
+    "H": np.array([[1, 1], [1, -1]], dtype=complex) / 2 ** (1 / 2),
+}
 
 
 class Tensor:
@@ -14,10 +16,30 @@ class Tensor:
     @classmethod
     def qubit(cls, state: int):
         assert int(state) in (0, 1)
-        return cls(np.eye(2, dtype=complex)[state])
+        return cls(np.eye(2, dtype=complex)[state], name="Qubit")
 
-    def __init__(self, data=None):
+    @classmethod
+    def gate(cls, op: str, param=None):
+        assert op in ("X", "Y", "Z", "H")
+        if param is None:
+            arr = BaseQuantumGates[op]
+            name = op
+        else:
+            assert op != "H"
+            arr = create_rotational_unitary(op, param)
+            name = "R" + op
+        return cls(arr, name)
+
+    @classmethod
+    def c_gate(cls, op: str, param=None):
+        c_gate = np.eye(4, dtype=complex)
+        gate = Tensor.gate(op, param)
+        c_gate[2:, 2:] = gate.array
+        return cls(c_gate, name="C" + gate.name).reshape(2, 2, 2, 2)
+
+    def __init__(self, data, name=None):
         self.array = np.asarray(data, complex)
+        self.name = name
 
     def __getitem__(self, item):
         return self.array[item]
