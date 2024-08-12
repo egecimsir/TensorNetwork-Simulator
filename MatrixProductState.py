@@ -83,3 +83,11 @@ class MPS:
         assert 1 not in dims  ## bond_dims can't be 1
         pass
 
+    def SWAP(self, q1: int, q2: int):
+        """Swaps two sequential qubits"""
+        assert (q1 in range(self.n_qubits) and q2 in range(self.n_qubits))
+        assert abs(q1 - q2) == 1
+
+        temp = self[q1]
+        self[q1] = self[q2]
+        self[q2] = temp
