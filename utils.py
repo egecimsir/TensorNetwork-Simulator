@@ -13,15 +13,6 @@ def is_unitary(arr: np.ndarray) -> bool:
     return np.allclose(eye, arr.dot(arr_t))
 
 
-def make_qubit(arr) -> np.ndarray:
-    state = np.asarray(arr, dtype=complex)
-    qubit = state / np.linalg.norm(state)
-    if not (is_unitary(state) and len(state) == 2):
-        raise ValueError
-    else:
-        return qubit
-
-
 def create_rotational_unitary(op: str, theta: float) -> np.ndarray:
     """
     Creates RX, RY, RZ gates for a given string={'X','Y','Z'}
@@ -44,7 +35,3 @@ def create_rotational_unitary(op: str, theta: float) -> np.ndarray:
         gate = np.array([[exp(-1j * theta / 2), 0],
                          [0, exp(1j * theta / 2)]], dtype=complex)
     return gate
-
-
-def to_int_list(state) -> [int]:
-    return [int(i) for i in list(state)]

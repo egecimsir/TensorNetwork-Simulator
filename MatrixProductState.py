@@ -8,6 +8,12 @@ class MPS:
     physical_bond = 1
     n_bonds = 2
 
+    @classmethod
+    def from_amplitude(cls, tensor):
+        """Apply SVD step by step throughout the tensor"""
+        ## TODO: ??
+        pass
+
     def __init__(self, n_qubits, bond_dims=None):
         self.n_qubits = n_qubits
         self.tensors = []
@@ -57,7 +63,7 @@ class MPS:
 
     def retrieve_amplitude_of(self, state: str):
         assert len(state) == self.n_qubits
-        tensors = list([])
+        tensors = []
 
         ## Fix physical indices
         for s in range(len(state)):
@@ -68,9 +74,12 @@ class MPS:
         ## Matrix-Vector products
         row_vec = tensors.pop(0)
         col_vec = tensors.pop(-1)
-
         for mat in tensors:
             row_vec = np.einsum("i, ij -> j", row_vec, mat)
 
         return row_vec @ col_vec
+
+    def set_bond_dims(self, dims: iter):
+        assert 1 not in dims  ## bond_dims can't be 1
+        pass
 
