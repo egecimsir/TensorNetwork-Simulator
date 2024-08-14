@@ -6,11 +6,12 @@ class MPS:
     physical_bond = 1
     n_bonds = 2
 
-    ## TODO ??
+    ## TODO: Needed ??
     @classmethod
-    def from_amplitude(cls, tensor):
-        """Apply SVD step by step throughout the tensor"""
-        pass
+    def from_tensor(cls, tensor: np.ndarray):
+        """Apply SVD step by step throughout the tensor to build MPS"""
+        ...
+        return cls
 
     def __init__(self, n_qubits, bond_dims=None):
         self.n_qubits = n_qubits
@@ -39,7 +40,7 @@ class MPS:
         return st
 
     def __len__(self):
-        return len(self.tensors)
+        return self.n_qubits
 
     def __getitem__(self, item):
         return self.tensors[item]
@@ -80,7 +81,8 @@ class MPS:
     ## TODO
     def set_bond_dims(self, dims: iter):
         assert 1 not in dims  ## bond_dims can't be 1
-        pass
+        ...
+        return self
 
     def SWAP(self, q1: int, q2: int):
         """Swaps two sequential qubits"""

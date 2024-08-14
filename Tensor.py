@@ -4,6 +4,7 @@ from utils import create_rotational_unitary
 
 ## Base Quantum Gates
 BaseQuantumGates = {
+    "I": np.eye(2, dtype=complex),
     "X": np.array([[0, 1], [1, 0]], dtype=complex),
     "Y": np.array([[0, -1j], [1j, 0]], dtype=complex),
     "Z": np.array([[1, 0], [0, -1]], dtype=complex),

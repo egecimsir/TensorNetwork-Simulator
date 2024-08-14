@@ -7,16 +7,20 @@ class MPO:
     physical_bond = 2
     n_bonds = 2
 
-    ## TODO:
+    ## TODO: Needed ??
     @classmethod
-    def from_circuit(cls, *args):
+    def phase_MPO(cls, *args):
         return cls(*args)
 
     ## TODO:
-    def __init__(self, n_qubits, bond_dims=None):
+    @classmethod
+    def QFT_MPO(cls, *args):
+        return cls(*args)
+
+    ## TODO:
+    def __init__(self, n_qubits: int):
         self.n_qubits = n_qubits
-        self.bond_dims = bond_dims
-        self.tensors = []
+        self.tensors = [[] for _ in range(n_qubits)]
 
         for i in range(n_qubits):
             if i == 0:
@@ -34,14 +38,14 @@ class MPO:
         :param mps: MPS to be evolved.
         :return: evolved MPS
         """
-        self.check_input_mps(mps)
+        assert self.check_input_mps(mps)
         return mps
 
     def __repr__(self):
         return f"MPO({self.n_qubits})\n---------------\n"
 
     def __len__(self):
-        return len(self.tensors)
+        return self.n_qubits
 
     def __getitem__(self, item):
         return self.tensors[item]
