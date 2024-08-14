@@ -7,7 +7,7 @@ class MPO:
     physical_bond = 2
     n_bonds = 2
 
-    ## TODO: Needed ??
+    ## TODO:
     @classmethod
     def phase_MPO(cls, *args):
         return cls(*args)
@@ -45,7 +45,7 @@ class MPO:
         return f"MPO({self.n_qubits})\n---------------\n"
 
     def __len__(self):
-        return self.n_qubits
+        return len(self.tensors)
 
     def __getitem__(self, item):
         return self.tensors[item]

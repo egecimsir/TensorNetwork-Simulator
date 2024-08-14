@@ -6,16 +6,9 @@ class MPS:
     physical_bond = 1
     n_bonds = 2
 
-    ## TODO: Needed ??
-    @classmethod
-    def from_tensor(cls, tensor: np.ndarray):
-        """Apply SVD step by step throughout the tensor to build MPS"""
-        ...
-        return cls
-
-    def __init__(self, n_qubits, bond_dims=None):
-        self.n_qubits = n_qubits
-        self.tensors = []
+    def __init__(self, n_qubits: int, bond_dims=None):
+        self.n_qubits: int = n_qubits
+        self.tensors: [Tensor] = []
 
         if bond_dims is not None:
             assert len(bond_dims) + 1 == self.n_qubits
@@ -40,7 +33,7 @@ class MPS:
         return st
 
     def __len__(self):
-        return self.n_qubits
+        return len(self.tensors)
 
     def __getitem__(self, item):
         return self.tensors[item]
