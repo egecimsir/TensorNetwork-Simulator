@@ -1,5 +1,6 @@
 import numpy as np
 from Tensor import Tensor
+from utils import check_input_state
 
 
 class MPS:
@@ -53,8 +54,17 @@ class MPS:
         else:
             raise StopIteration
 
+    @property
+    def n_qubits(self):
+        return self.n_qubits
+
+    @n_qubits.setter
+    def n_qubits(self, n):
+        self.n_qubits = n
+
     def retrieve_amplitude_of(self, state: str):
         assert len(state) == self.n_qubits
+        assert check_input_state(state)
         tensors = []
 
         ## Fix physical indices
@@ -70,18 +80,3 @@ class MPS:
             row_vec = np.einsum("i, ij -> j", row_vec, mat)
 
         return row_vec @ col_vec
-
-    ## TODO
-    def set_bond_dims(self, dims: iter):
-        assert 1 not in dims  ## bond_dims can't be 1
-        ...
-        return self
-
-    def SWAP(self, q1: int, q2: int):
-        """Swaps two sequential qubits"""
-        assert (q1 in range(self.n_qubits) and q2 in range(self.n_qubits))
-        assert abs(q1 - q2) == 1
-
-        temp = self[q1]
-        self[q1] = self[q2]
-        self[q2] = temp

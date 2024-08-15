@@ -34,3 +34,14 @@ def create_rotational_unitary(op: str, theta: float) -> np.ndarray:
                          [0, exp(1j * theta / 2)]], dtype=complex)
 
     return gate
+
+
+def check_input_state(state: str) -> bool:
+    if set(state) == {0}:
+        return True
+    elif set(state) == {1}:
+        return True
+    elif set(state) == {0, 1}:
+        return True
+    else:
+        return False
