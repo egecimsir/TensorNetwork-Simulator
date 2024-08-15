@@ -47,7 +47,16 @@ class TensorNetwork:
         assert len(state) == self.n_qubits
         assert check_input_state(state)
         X = Tensor.gate("X")
-        ...
+
+        for s in range(self.n_qubits):
+            if state[s] == "0":
+                continue
+            else:
+                if self[s].ndim == 2:  ## Edge Tensor
+                    self[s] = Tensor(np.einsum("lk, ki -> li", X, self[s]))
+                elif self[s].ndim == 3:  ## Middle Tensor
+                    self[s] = Tensor(np.einsum("lk, kij -> lij", X, self[s]))
+
         return self
 
     def hadamard(self, qbit: int):
@@ -56,20 +65,20 @@ class TensorNetwork:
         H = Tensor.gate("H")
 
         if self[qbit].ndim == 2:    ## Edge Tensor
-            self[qbit] = np.einsum("lk, ki -> li", H, self[qbit])
+            self[qbit] = Tensor(np.einsum("lk, ki -> li", H, self[qbit]))
         elif self[qbit].ndim == 3:  ## Middle Tensor
-            self[qbit] = np.einsum("lk, kij -> lij", H, self[qbit])
+            self[qbit] = Tensor(np.einsum("lk, kij -> lij", H, self[qbit]))
 
         return self
 
     def cnot(self, c_qbit: int, t_qbit: int):
         """Applies controlled phase gate to the MPS through tensor contraction to the given qubits."""
-        ...
+        ## TODO
         return self
 
     def c_phase(self, c_qbit: int, t_qbit: int):
         """Applies controlled phase gate to the MPS through tensor contraction to the given qubits."""
-        ...
+        ## TODO
         return self
 
     def make_MPO(self):
