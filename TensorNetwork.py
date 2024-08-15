@@ -42,7 +42,9 @@ class TensorNetwork:
         return st
 
     def initialize(self, state: str):
-        """Apply X gates to the MPS to initialize a given state."""
+        """
+        Apply X gates to the MPS to initialize a given state.
+        """
         assert len(state) == self.n_qubits
         assert check_input_state(state)
         X = Tensor.gate("X")
@@ -59,7 +61,9 @@ class TensorNetwork:
         return self
 
     def hadamard(self, qbit: int):
-        """Applies hadamard gate to the MPS through tensor contraction to a given qubit."""
+        """
+        Applies hadamard gate to the MPS through tensor contraction to a given qubit.
+        """
         assert qbit in range(self.n_qubits)
         H = Tensor.gate("H")
 
@@ -70,13 +74,41 @@ class TensorNetwork:
 
         return self
 
+    def swap(self, c_qbit: int, t_qbit: int):
+        """
+        Applies swap operation on two neighbouring qubits
+        """
+        assert c_qbit in range(self.n_qubits) and t_qbit in range(self.n_qubits)
+        assert c_qbit + 1 == t_qbit
+
+        ## TODO: Handle also edge qubits
+
+        SWAP = Tensor.c_gate("SWAP")
+        Mc, Mt = self[c_qbit], self[t_qbit]
+
+        ## Contract both tensors to a 4d-Tensor
+        T1 = np.einsum("ijk, lkm -> ijlm", Mc, Mt)
+
+        ## Contract Tensor with 4d-Tensor Swap Gate
+        T2 = np.einsum("", SWAP, T1)
+
+        ## Singular Value Decomposition
+        U, S, M2 = np.linalg.svd(T2)
+        pass
+
+        ## Assign resulting tensors back to qubits
+        pass
+
     def cnot(self, c_qbit: int, t_qbit: int):
-        """Applies controlled phase gate to the MPS through tensor contraction to the given qubits."""
-        ## TODO
-        return self
+        """
+        Applies controlled phase gate to the MPS through tensor contraction to two neighbouring qubits.
+        """
+        assert c_qbit in range(self.n_qubits) and t_qbit in range(self.n_qubits)
+        assert c_qbit < t_qbit
+        pass
 
     def c_phase(self, c_qbit: int, t_qbit: int):
-        """Applies controlled phase gate to the MPS through tensor contraction to the given qubits."""
+        """Applies controlled phase gate to the MPS through tensor contraction to two neighbouring qubits."""
         ## TODO
         return self
 

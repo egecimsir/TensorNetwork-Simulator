@@ -4,13 +4,14 @@ from utils import create_rotational_unitary
 from typing import Optional
 
 
-## Base Quantum Gates
+## Quantum Gates
 BaseQuantumGates = {
     "I": np.eye(2, dtype=complex),
     "X": np.array([[0, 1], [1, 0]], dtype=complex),
     "Y": np.array([[0, -1j], [1j, 0]], dtype=complex),
     "Z": np.array([[1, 0], [0, -1]], dtype=complex),
     "H": np.array([[1, 1], [1, -1]], dtype=complex) / 2 ** (1 / 2),
+    "SWAP": np.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=complex)
 }
 
 
@@ -35,10 +36,16 @@ class Tensor:
 
     @classmethod
     def c_gate(cls, op: str, param: Optional[float] = None):
-        c_gate = np.eye(4, dtype=complex)
-        gate = Tensor.gate(op, param)
-        c_gate[2:, 2:] = gate.array
-        return cls(c_gate, name="C" + gate.name).reshape(2, 2, 2, 2)
+        if op == "SWAP":
+            c_gate = BaseQuantumGates[op]
+            name = op
+        else:
+            gate = Tensor.gate(op, param)
+            c_gate = np.eye(4, dtype=complex)
+            c_gate[2:, 2:] = gate.array
+            name = "C" + gate.name
+
+        return cls(c_gate, name=name).reshape(2, 2, 2, 2)
 
     def __init__(self, data, name: Optional[str] = None):
         self.array = np.asarray(data, complex)
