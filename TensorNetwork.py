@@ -3,7 +3,6 @@ import numpy as np
 from Tensor import Tensor
 from utils import check_input_state
 from MatrixProductState import MPS
-
 from typing import Optional
 
 

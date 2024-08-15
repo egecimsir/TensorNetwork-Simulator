@@ -1,5 +1,7 @@
 import numpy as np
+
 from utils import create_rotational_unitary
+from typing import Optional
 
 
 ## Base Quantum Gates
@@ -20,7 +22,7 @@ class Tensor:
         return cls(np.eye(2, dtype=complex)[state], name="Qubit")
 
     @classmethod
-    def gate(cls, op: str, param=None):
+    def gate(cls, op: str, param: Optional[float] = None):
         assert op in ("X", "Y", "Z", "H")
         if param is None:
             arr = BaseQuantumGates[op]
@@ -32,13 +34,13 @@ class Tensor:
         return cls(arr, name)
 
     @classmethod
-    def c_gate(cls, op: str, param=None):
+    def c_gate(cls, op: str, param: Optional[float] = None):
         c_gate = np.eye(4, dtype=complex)
         gate = Tensor.gate(op, param)
         c_gate[2:, 2:] = gate.array
         return cls(c_gate, name="C" + gate.name).reshape(2, 2, 2, 2)
 
-    def __init__(self, data, name=None):
+    def __init__(self, data, name: Optional[str] = None):
         self.array = np.asarray(data, complex)
         self.name = name
 
