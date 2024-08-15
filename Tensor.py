@@ -75,10 +75,6 @@ class Tensor:
         return self.array.shape
 
     @property
-    def bond_dim(self):
-        return self.shape[-1]
-
-    @property
     def ndim(self):
         return self.array.ndim
 

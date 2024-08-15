@@ -57,7 +57,6 @@ class TensorNetwork:
                     self[s] = Tensor(np.einsum("lk, ki -> li", X, self[s]))
                 elif self[s].ndim == 3:  ## Middle Tensor
                     self[s] = Tensor(np.einsum("lk, kij -> lij", X, self[s]))
-
         return self
 
     def hadamard(self, qbit: int):
@@ -87,17 +86,28 @@ class TensorNetwork:
         Mc, Mt = self[c_qbit], self[t_qbit]
 
         ## Contract both tensors to a 4d-Tensor
-        T1 = np.einsum("ijk, lkm -> ijlm", Mc, Mt)
+        T1 = np.einsum("ijk, lkm -> iljm", Mc, Mt)
 
         ## Contract Tensor with 4d-Tensor Swap Gate
-        T2 = np.einsum("", SWAP, T1)
+        T2 = np.einsum("vwil, iljm -> vwjm", SWAP, T1)
 
         ## Singular Value Decomposition
-        U, S, M2 = np.linalg.svd(T2)
-        pass
+        p1, p2, b1, b2 = T2.shape
+        T2 = T2.reshape(p1*b1, p2*b2)
+        U, S, V = np.linalg.svd(T2, full_matrices=False)
+
+        ## Adjust bond_dim (w/o truncation)
+        # TODO: implement truncation
+        bond = S.shape[0]
+
+        ## Reshape and Combine U-S
+        U = np.einsum("ijk, k -> ijk", U.reshape(p1, b1, bond), S)
+        V = V.reshape(p2, bond, b2)
 
         ## Assign resulting tensors back to qubits
-        pass
+        self[c_qbit], self[t_qbit] = Tensor(U), Tensor(V)
+
+        return self
 
     def cnot(self, c_qbit: int, t_qbit: int):
         """
@@ -112,6 +122,6 @@ class TensorNetwork:
         ## TODO
         return self
 
-    def make_MPO(self):
-        return self
+    def retrieve_amplitude_of(self, state: str):
+        return self.mps.retrieve_amplitude_of(state=state)
 
