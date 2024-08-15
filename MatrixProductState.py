@@ -1,13 +1,16 @@
 import numpy as np
+
 from Tensor import Tensor
 from utils import check_input_state
+
+from typing import Optional, List
 
 
 class MPS:
     physical_bond = 1
     n_bonds = 2
 
-    def __init__(self, n_qubits: int, bond_dims=None):
+    def __init__(self, n_qubits: int, bond_dims: Optional[List[int]] = None):
         self.n_qubits: int = n_qubits
         self.tensors: [Tensor] = []
 
@@ -28,7 +31,7 @@ class MPS:
             self.tensors.append(tensor)
 
     def __repr__(self):
-        st = f"MPS({self.n_qubits})\n---------------\n"
+        st = f"{self.__class__.__name__}({self.n_qubits})\n---------------\n"
         for i, tensor in enumerate(self.tensors):
             st += f"T{i}_{tensor.shape}\n"
         return st
@@ -53,14 +56,6 @@ class MPS:
             return t
         else:
             raise StopIteration
-
-    @property
-    def n_qubits(self):
-        return self.n_qubits
-
-    @n_qubits.setter
-    def n_qubits(self, n):
-        self.n_qubits = n
 
     def retrieve_amplitude_of(self, state: str):
         assert len(state) == self.n_qubits
