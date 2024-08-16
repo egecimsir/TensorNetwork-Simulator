@@ -20,7 +20,7 @@ class Tensor:
     @classmethod
     def qubit(cls, state: int):
         assert int(state) in (0, 1)
-        return cls(np.eye(2, dtype=complex)[state], name="Qubit")
+        return cls(np.eye(2, dtype=complex)[state], name="Qubit").reshape(1, 2, 1)
 
     @classmethod
     def gate(cls, op: str, param: Optional[float] = None):
@@ -92,4 +92,8 @@ class Tensor:
 
     def conjugate(self):
         self.array = self.array.conjugate()
+        return self
+
+    def squeeze(self, axis):
+        self.array = self.array.squeeze(axis)
         return self

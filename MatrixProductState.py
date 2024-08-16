@@ -9,23 +9,17 @@ class MPS:
     physical_bond = 1
     n_bonds = 2
 
-    def __init__(self, n_qubits: int, bond_dims: Optional[List[int]] = None):
+    def __init__(self, n_qubits: int):
         self.n_qubits: int = n_qubits
         self.tensors: [Tensor] = []
 
-        if bond_dims is not None:
-            assert len(bond_dims) + 1 == self.n_qubits
-            self.bond_dims = bond_dims
-        else:
-            self.bond_dims = [1 for _ in range(self.n_qubits - 1)]
-
         for i in range(n_qubits):
             if i == 0:
-                tensor = Tensor.qubit(0).reshape(2, self.bond_dims[i])
+                tensor = Tensor.qubit(0).squeeze(0)
             elif i == n_qubits - 1:
-                tensor = Tensor.qubit(0).reshape(2, self.bond_dims[i - 1])
+                tensor = Tensor.qubit(0).squeeze(2)
             else:
-                tensor = Tensor.qubit(0).reshape(2, self.bond_dims[i - 1], self.bond_dims[i])
+                tensor = Tensor.qubit(0)
 
             self.tensors.append(tensor)
 
@@ -65,6 +59,7 @@ class MPS:
         for s in range(len(state)):
             idx = int(state[s])
             arr = self.tensors[s][idx]
+            print(arr.shape)
             tensors.append(arr)
 
         ## Matrix-Vector products

@@ -54,9 +54,9 @@ class TensorNetwork:
                 continue
             else:
                 if self[s].ndim == 2:  ## Edge Tensor
-                    self[s] = Tensor(np.einsum("lk, ki -> li", X, self[s]))
+                    self[s] = Tensor(np.einsum("lk, kj -> lj", X, self[s]))
                 elif self[s].ndim == 3:  ## Middle Tensor
-                    self[s] = Tensor(np.einsum("lk, kij -> lij", X, self[s]))
+                    self[s] = Tensor(np.einsum("lk, ikj -> ilj", X, self[s]))
         return self
 
     def hadamard(self, qbit: int):
@@ -67,9 +67,9 @@ class TensorNetwork:
         H = Tensor.gate("H")
 
         if self[qbit].ndim == 2:    ## Edge Tensor
-            self[qbit] = Tensor(np.einsum("lk, ki -> li", H, self[qbit]))
+            self[qbit] = Tensor(np.einsum("lk, kj -> lj", H, self[qbit]))
         elif self[qbit].ndim == 3:  ## Middle Tensor
-            self[qbit] = Tensor(np.einsum("lk, kij -> lij", H, self[qbit]))
+            self[qbit] = Tensor(np.einsum("lk, ikj -> ilj", H, self[qbit]))
 
         return self
 
@@ -86,23 +86,31 @@ class TensorNetwork:
         Mc, Mt = self[c_qbit], self[t_qbit]
 
         ## Contract both tensors to a 4d-Tensor
-        T1 = np.einsum("ijk, lkm -> iljm", Mc, Mt)
+        T1 = np.einsum("jik, klm -> jilm", Mc, Mt)
 
         ## Contract Tensor with 4d-Tensor Swap Gate
-        T2 = np.einsum("vwil, iljm -> vwjm", SWAP, T1)
+        T2 = np.einsum("vwil, jilm -> jvwm", SWAP, T1)
 
         ## Singular Value Decomposition
-        p1, p2, b1, b2 = T2.shape
+        b1, p1, p2, b2 = T2.shape
         T2 = T2.reshape(p1*b1, p2*b2)
-        U, S, V = np.linalg.svd(T2, full_matrices=False)
+        U, S, V = np.linalg.svd(T2, full_matrices=True)
 
         ## Adjust bond_dim (w/o truncation)
         # TODO: implement truncation
         bond = S.shape[0]
 
         ## Reshape and Combine U-S
-        U = np.einsum("ijk, k -> ijk", U.reshape(p1, b1, bond), S)
-        V = V.reshape(p2, bond, b2)
+        U = U.reshape(b1, p1, bond)
+        S = np.diag(S)
+        V = V.reshape(bond, p2, b2)
+        print(U.shape)
+        print(S.shape)
+        print(V.shape)
+
+        U = np.einsum("ijk, kk -> ijk", U, S)
+
+        print(U.shape)
 
         ## Assign resulting tensors back to qubits
         self[c_qbit], self[t_qbit] = Tensor(U), Tensor(V)
