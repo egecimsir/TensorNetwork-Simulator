@@ -104,13 +104,8 @@ class TensorNetwork:
         U = U.reshape(b1, p1, bond)
         S = np.diag(S)
         V = V.reshape(bond, p2, b2)
-        print(U.shape)
-        print(S.shape)
-        print(V.shape)
 
         U = np.einsum("ijk, kk -> ijk", U, S)
-
-        print(U.shape)
 
         ## Assign resulting tensors back to qubits
         self[c_qbit], self[t_qbit] = Tensor(U), Tensor(V)

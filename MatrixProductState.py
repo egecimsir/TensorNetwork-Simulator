@@ -50,6 +50,24 @@ class MPS:
         else:
             raise StopIteration
 
+    def initialize(self, state: str):
+        """
+        Apply X gates to the MPS to initialize a given state.
+        """
+        assert len(state) == self.n_qubits
+        assert check_input_state(state)
+        X = Tensor.gate("X")
+
+        for s in range(self.n_qubits):
+            if state[s] == "0":
+                continue
+            else:
+                if self[s].ndim == 2:  ## Edge Tensor
+                    self[s] = Tensor(np.einsum("lk, kj -> lj", X, self[s]))
+                elif self[s].ndim == 3:  ## Middle Tensor
+                    self[s] = Tensor(np.einsum("lk, ikj -> ilj", X, self[s]))
+        return self
+
     def retrieve_amplitude_of(self, state: str):
         assert len(state) == self.n_qubits
         assert check_input_state(state)
@@ -58,8 +76,12 @@ class MPS:
         ## Fix physical indices
         for s in range(len(state)):
             idx = int(state[s])
-            arr = self.tensors[s][idx]
-            print(arr.shape)
+            if s == 0:
+                arr = self.tensors[s][idx, :]
+            elif s == self.n_qubits-1:
+                arr = self.tensors[s][:, idx]
+            else:
+                arr = self.tensors[s][:, idx, :]
             tensors.append(arr)
 
         ## Matrix-Vector products
