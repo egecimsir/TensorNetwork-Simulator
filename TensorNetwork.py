@@ -24,11 +24,11 @@ class TensorNetwork:
 
         for i in range(n_qubits):
             qc.hadamard(i)
-            for j in range(i, n_qubits):
+            for j in range(i+1, n_qubits):
                 ## If not adjacent
                 if i + 1 != j: qc.make_adjacent(i, j, bond_dim)  ## fixme
 
-                qc.c_phase(i, j, phase=np.pi / 2 ** (j + 1))
+                qc.c_phase(i+1, j, phase=np.pi / 2 ** (j + 1))   ## fixme
 
                 ## If not adjacent
                 if i + 1 != j: qc.restore_order(i, j, bond_dim)  ## fixme
