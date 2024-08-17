@@ -2,21 +2,36 @@ import numpy as np
 
 from Tensor import Tensor
 from MatrixProductState import MPS
-from utils import truncate_USV
+from utils import truncate_USV, check_input_state
 from typing import Optional
 
 
 class TensorNetwork:
 
     @classmethod
-    def QFT(cls, n_qubits: int, state: str):
+    def QFT(cls, state: str, bond_dim: Optional[int] = None):
+        """
+         QFT Tensor Network with Gate-Ansatz
+        -------------------------------------
+        :param state: Initial state to be fourier transformed
+        :param bond_dim: Maximum bond dimension in the network
+        :return: TensorNetwork with QFT applied
+        """
+        assert check_input_state(state)
+
+        n_qubits = len(state)
         qc = cls(n_qubits, state)
+
         for i in range(n_qubits):
             qc.hadamard(i)
-            ## TODO: Make qubits adjacent and restore ordering
             for j in range(i, n_qubits):
-                theta = np.pi / 2 ** (j + 1)
-                qc.c_phase(i, j, phase=theta)
+                ## If not adjacent
+                if i + 1 != j: qc.make_adjacent(i, j, bond_dim)  ## fixme
+
+                qc.c_phase(i, j, phase=np.pi / 2 ** (j + 1))
+
+                ## If not adjacent
+                if i + 1 != j: qc.restore_order(i, j, bond_dim)  ## fixme
 
         return qc
 
@@ -94,7 +109,7 @@ class TensorNetwork:
                          bond_dim: Optional[int] = None):
         """
         Applies 2-qubit operations on two neighbouring qubits.
-        -----------------------------------------------------
+        ------------------------------------------------------
         :param op: Name of the operation
         :param c_qbit: Control qubit
         :param t_qbit: Target qubit
@@ -190,6 +205,34 @@ class TensorNetwork:
         self[c_qbit], self[t_qbit] = Tensor(U), Tensor(V)
 
         return self
+
+    def make_adjacent(self, c_qbit: int, t_qbit: int, bond_dim: Optional[int] = None):
+        """
+        Brings target tensor near to the control tensor by applying series of swaps.
+        ----------------------------------------------------------------------------
+        :param c_qbit: Tensor to be fixed at its position
+        :param t_qbit: Tensor to bring backwards
+        :param bond_dim: max bond_dim for swap operations
+        """
+        assert c_qbit in range(self.n_qubits) and t_qbit in range(self.n_qubits)
+        assert c_qbit < t_qbit
+
+        for i in range(t_qbit, c_qbit + 1, -1):
+            self.swap(i, i - 1, bond_dim)
+
+    def restore_order(self, c_qbit: int, t_qbit: int, bond_dim: Optional[int] = None):
+        """
+        Brings the tensor next of c_qbit back to site t_qbit by applying series of swaps.
+        ---------------------------------------------------------------------------------
+        :param c_qbit: Tensor to be fixed at its position
+        :param t_qbit: Tensor to be moved
+        :param bond_dim: max bond_dim for swap operations
+        """
+        assert c_qbit in range(self.n_qubits) and t_qbit in range(self.n_qubits)
+        assert c_qbit < t_qbit
+
+        for i in range(c_qbit + 1, t_qbit):
+            self.swap(i, i + 1, bond_dim)
 
     def x(self, qbit: int, param: Optional[float] = None):
         """
