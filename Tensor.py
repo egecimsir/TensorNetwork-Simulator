@@ -16,6 +16,9 @@ BaseQuantumGates = {
 
 
 class Tensor:
+    """
+    Imitation of the np.ndarray, with only complex values
+    """
 
     @classmethod
     def qubit(cls, state: int):
