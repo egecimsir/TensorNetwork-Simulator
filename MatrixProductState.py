@@ -56,6 +56,7 @@ class MPS:
         """
         assert len(state) == self.n_qubits
         assert check_input_state(state)
+
         X = Tensor.gate("X")
 
         for s in range(self.n_qubits):
@@ -69,8 +70,15 @@ class MPS:
         return self
 
     def retrieve_amplitude_of(self, state: str):
+        """
+        Retrieves the amplitude of the given state on the MPS.
+        ------------------------------------------------------
+        :param state: Classical binary-string state
+        :return: A complex number representing the amplitude of the state
+        """
         assert len(state) == self.n_qubits
         assert check_input_state(state)
+
         tensors = []
 
         ## Fix physical indices
@@ -78,7 +86,7 @@ class MPS:
             idx = int(state[s])
             if s == 0:
                 arr = self.tensors[s][idx, :]
-            elif s == self.n_qubits-1:
+            elif s == self.n_qubits - 1:
                 arr = self.tensors[s][:, idx]
             else:
                 arr = self.tensors[s][:, idx, :]

@@ -1,7 +1,6 @@
 import numpy as np
 
 from Tensor import Tensor
-from utils import check_input_state
 from MatrixProductState import MPS
 from typing import Optional
 
@@ -42,15 +41,26 @@ class TensorNetwork:
         return st
 
     def initialize(self, state: str):
+        """
+        Initializes the MPS of the network with given state.
+        """
         return self.mps.initialize(state)
 
     def retrieve_amplitude_of(self, state: str):
         """
-        Retrieves the amplitude of the given state
+        Retrieves the amplitude of the given state on the MPS.
         """
         return self.mps.retrieve_amplitude_of(state=state)
 
     def apply_single_gate(self, op: str, qbit: int, param: Optional[float] = None):
+        """
+        Applies 1-qubit operations on the given qubit.
+        ----------------------------------------------
+        :param op: Name of the operation
+        :param qbit: Site of the qubit
+        :param param: Rotation on the specified axis
+        :return: TensorNetwork with the operation applied
+        """
         assert qbit in range(self.n_qubits)
 
         GATE = Tensor.gate(op=op, param=param)
@@ -64,7 +74,7 @@ class TensorNetwork:
 
     def apply_multi_gate(self, op: str, c_qbit: int, t_qbit: int, param: Optional[float] = None):
         """
-        Applies 2-qubit operations on two neighbouring qubits
+        Applies 2-qubit operations on two neighbouring qubits.
         -----------------------------------------------------
         :param op: Name of the operation
         :param c_qbit: Control qubit
@@ -156,28 +166,49 @@ class TensorNetwork:
         return self.apply_single_gate(op="H", qbit=qbit, param=None)
 
     def x(self, qbit: int, param: Optional[float] = None):
+        """
+        Applies X gate to the MPS through tensor contraction to a given qubit.
+        ----------------------------------------------------------------------
+        :param qbit: Site of the qubit
+        :param param: Rotation on the axis
+        :return: TensorNetwork
+        """
         return self.apply_single_gate(op="X", qbit=qbit, param=param)
 
     def y(self, qbit: int, param: Optional[float] = None):
+        """
+        Applies Y gate to the MPS through tensor contraction to a given qubit.
+        ----------------------------------------------------------------------
+        :param qbit: Site of the qubit
+        :param param: Rotation on the axis
+        :return: TensorNetwork
+        """
         return self.apply_single_gate(op="Y", qbit=qbit, param=param)
 
     def z(self, qbit: int, param: Optional[float] = None):
+        """
+        Applies Z gate to the MPS through tensor contraction to a given qubit.
+        ----------------------------------------------------------------------
+        :param qbit: Site of the qubit
+        :param param: Rotation on the axis
+        :return: TensorNetwork
+        """
         return self.apply_single_gate(op="Z", qbit=qbit, param=param)
 
     def swap(self, c_qbit: int, t_qbit: int):
         """
-        Applies swap operation on two neighbouring qubits
+        Applies swap operation on two neighbouring qubits.
         """
         return self.apply_multi_gate(op="SWAP", c_qbit=c_qbit, t_qbit=t_qbit, param=None)
 
     def cnot(self, c_qbit: int, t_qbit: int):
         """
-        Applies controlled phase gate to the MPS through tensor contraction to two neighbouring qubits.
+        Applies CNOT gate to the MPS for neighbouring qubits.
         """
         return self.apply_multi_gate(op="X", c_qbit=c_qbit, t_qbit=t_qbit, param=None)
 
     def c_phase(self, c_qbit: int, t_qbit: int, phase: float):
         """
-        Applies controlled phase gate to the MPS through tensor contraction to two neighbouring qubits.
+        Applies controlled phase gate to the MPS for neighbouring qubits.
         """
         return self.apply_multi_gate(op="Z", c_qbit=c_qbit, t_qbit=t_qbit, param=phase)
