@@ -42,22 +42,7 @@ class TensorNetwork:
         return st
 
     def initialize(self, state: str):
-        """
-        Apply X gates to the MPS to initialize a given state.
-        """
-        assert len(state) == self.n_qubits
-        assert check_input_state(state)
-        X = Tensor.gate("X")
-
-        for s in range(self.n_qubits):
-            if state[s] == "0":
-                continue
-            else:
-                if self[s].ndim == 2:  ## Edge Tensor
-                    self[s] = Tensor(np.einsum("lk, kj -> lj", X, self[s]))
-                elif self[s].ndim == 3:  ## Middle Tensor
-                    self[s] = Tensor(np.einsum("lk, ikj -> ilj", X, self[s]))
-        return self
+        return self.mps.initialize(state)
 
     def hadamard(self, qbit: int):
         """
@@ -80,32 +65,74 @@ class TensorNetwork:
         assert c_qbit in range(self.n_qubits) and t_qbit in range(self.n_qubits)
         assert c_qbit + 1 == t_qbit
 
-        ## TODO: Handle also edge qubits
-
         SWAP = Tensor.c_gate("SWAP")
         Mc, Mt = self[c_qbit], self[t_qbit]
 
-        ## Contract both tensors to a 4d-Tensor
-        T1 = np.einsum("jik, klm -> jilm", Mc, Mt)
+        if c_qbit == 0:
+            ## Contract both tensors to a 3d-Tensor
+            T1 = np.einsum("ij, jlk -> ilk", Mc, Mt)
 
-        ## Contract Tensor with 4d-Tensor Swap Gate
-        T2 = np.einsum("vwil, jilm -> jvwm", SWAP, T1)
+            ## Contract Tensor with 4d-Tensor Swap Gate
+            T2 = np.einsum("vwil, ilk -> vwk", SWAP, T1)
 
-        ## Singular Value Decomposition
-        b1, p1, p2, b2 = T2.shape
-        T2 = T2.reshape(p1*b1, p2*b2)
-        U, S, V = np.linalg.svd(T2, full_matrices=True)
+            ## Singular Value Decomposition
+            p1, p2, b2 = T2.shape
+            T2 = T2.reshape(p1, p2*b2)
+            U, S, V = np.linalg.svd(T2, full_matrices=False)
 
-        ## Adjust bond_dim (w/o truncation)
-        # TODO: implement truncation
-        bond = S.shape[0]
+            ## Adjust bond_dim (w/o truncation)
+            # TODO: implement truncation
+            bond = S.shape[0]
 
-        ## Reshape and Combine U-S
-        U = U.reshape(b1, p1, bond)
-        S = np.diag(S)
-        V = V.reshape(bond, p2, b2)
+            ## Reshape and combine U-S
+            U = U.reshape(p1, bond)
+            S = np.diag(S)
+            V = V.reshape(bond, p2, b2)
+            U = np.einsum("ij, jj -> ij", U, S)
 
-        U = np.einsum("ijk, kk -> ijk", U, S)
+        elif t_qbit == self.n_qubits-1:
+            ## Contract both tensors to a 3d-Tensor
+            T1 = np.einsum("jik, kl -> jil", Mc, Mt)
+
+            ## Contract Tensor with 4d-Tensor Swap Gate
+            T2 = np.einsum("vwil, jil -> jvw", SWAP, T1)
+
+            ## Singular Value Decomposition
+            b1, p1, p2 = T2.shape
+            T2 = T2.reshape(b1*p1, p2)
+            U, S, V = np.linalg.svd(T2, full_matrices=False)
+
+            ## Adjust bond_dim (w/o truncation)
+            # TODO: implement truncation
+            bond = S.shape[0]
+
+            ## Reshape and combine U-S
+            U = U.reshape(b1, p1, bond)
+            S = np.diag(S)
+            V = V.reshape(bond, p2)
+            U = np.einsum("jik, kk -> jik", U, S)
+
+        else:
+            ## Contract both tensors to a 4d-Tensor
+            T1 = np.einsum("jik, klm -> jilm", Mc, Mt)
+
+            ## Contract Tensor with 4d-Tensor Swap Gate
+            T2 = np.einsum("vwil, jilm -> jvwm", SWAP, T1)
+
+            ## Singular Value Decomposition
+            b1, p1, p2, b2 = T2.shape
+            T2 = T2.reshape(p1*b1, p2*b2)
+            U, S, V = np.linalg.svd(T2, full_matrices=False)
+
+            ## Adjust bond_dim (w/o truncation)
+            # TODO: implement truncation
+            bond = S.shape[0]
+
+            ## Reshape and combine U-S
+            U = U.reshape(b1, p1, bond)
+            S = np.diag(S)
+            V = V.reshape(bond, p2, b2)
+            U = np.einsum("ijk, kk -> ijk", U, S)
 
         ## Assign resulting tensors back to qubits
         self[c_qbit], self[t_qbit] = Tensor(U), Tensor(V)
