@@ -1,4 +1,5 @@
 import numpy as np
+from typing import Tuple
 
 
 def is_unitary(arr: np.ndarray) -> bool:
@@ -45,3 +46,31 @@ def check_input_state(state: str) -> bool:
         return True
     else:
         return False
+
+
+def truncate_USV(bond_dim: int, U: np.ndarray, S: np.ndarray, V: np.ndarray):
+    assert bond_dim >= 1
+
+    ## Truncate U
+    if U.ndim == 2:
+        U = U[:, :bond_dim]
+    elif U.ndim == 3:
+        U = U[:, :, :bond_dim]
+    else:
+        raise ValueError
+
+    ## Truncate S
+    if S.ndim == 2:
+        S = S[:bond_dim, :bond_dim]
+    else:
+        raise ValueError
+
+    ## Truncate V
+    if V.ndim == 2:
+        V = V[:bond_dim, :]
+    elif V.ndim == 3:
+        V = V[:bond_dim, :, :]
+    else:
+        raise ValueError
+
+    return U, S, V

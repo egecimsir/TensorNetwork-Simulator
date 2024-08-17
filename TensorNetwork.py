@@ -2,6 +2,7 @@ import numpy as np
 
 from Tensor import Tensor
 from MatrixProductState import MPS
+from utils import truncate_USV
 from typing import Optional
 
 
@@ -85,7 +86,12 @@ class TensorNetwork:
 
         return self
 
-    def apply_multi_gate(self, op: str, c_qbit: int, t_qbit: int, param: Optional[float] = None):
+    def apply_multi_gate(self,
+                         op: str,
+                         c_qbit: int,
+                         t_qbit: int,
+                         param: Optional[float] = None,
+                         bond_dim: Optional[int] = None):
         """
         Applies 2-qubit operations on two neighbouring qubits.
         -----------------------------------------------------
@@ -93,6 +99,7 @@ class TensorNetwork:
         :param c_qbit: Control qubit
         :param t_qbit: Target qubit
         :param param: Parameter value of the operation
+        :param bond_dim: Maximum bond dimension of matrices not to be exceeded
         :return: TensorNetwork with the operation applied
         """
         assert c_qbit in range(self.n_qubits) and t_qbit in range(self.n_qubits)
@@ -113,14 +120,18 @@ class TensorNetwork:
             T2 = T2.reshape(p1, p2 * b2)
             U, S, V = np.linalg.svd(T2, full_matrices=False)
 
-            ## Adjust bond_dim (w/o truncation)
-            # TODO: implement truncation
+            ## Reshape and combine U-S
             bond = S.shape[0]
 
-            ## Reshape and combine U-S
             U = U.reshape(p1, bond)
             S = np.diag(S)
             V = V.reshape(bond, p2, b2)
+
+            ## Truncate U, S, V
+            if bond_dim is not None:
+                U, S, V = truncate_USV(bond_dim, U, S, V)
+
+            ## Embed S into U
             U = np.einsum("ij, jj -> ij", U, S)
 
         elif t_qbit == self.n_qubits - 1:
@@ -135,14 +146,18 @@ class TensorNetwork:
             T2 = T2.reshape(b1 * p1, p2)
             U, S, V = np.linalg.svd(T2, full_matrices=False)
 
-            ## Adjust bond_dim (w/o truncation)
-            # TODO: implement truncation
+            ## Reshape and combine U-S
             bond = S.shape[0]
 
-            ## Reshape and combine U-S
             U = U.reshape(b1, p1, bond)
             S = np.diag(S)
             V = V.reshape(bond, p2)
+
+            ## Truncate U, S, V
+            if bond_dim is not None:
+                U, S, V = truncate_USV(bond_dim, U, S, V)
+
+            ## Embed S into U
             U = np.einsum("jik, kk -> jik", U, S)
 
         else:
@@ -157,14 +172,18 @@ class TensorNetwork:
             T2 = T2.reshape(p1 * b1, p2 * b2)
             U, S, V = np.linalg.svd(T2, full_matrices=False)
 
-            ## Adjust bond_dim (w/o truncation)
-            # TODO: implement truncation
+            ## Reshape and combine U-S
             bond = S.shape[0]
 
-            ## Reshape and combine U-S
             U = U.reshape(b1, p1, bond)
             S = np.diag(S)
             V = V.reshape(bond, p2, b2)
+
+            ## Truncate U, S, V
+            if bond_dim is not None:
+                U, S, V = truncate_USV(bond_dim, U, S, V)
+
+            ## Embed S into U
             U = np.einsum("ijk, kk -> ijk", U, S)
 
         ## Assign resulting tensors back to qubits
@@ -208,20 +227,20 @@ class TensorNetwork:
         """
         return self.apply_single_gate(op="H", qbit=qbit, param=None)
 
-    def swap(self, c_qbit: int, t_qbit: int):
+    def swap(self, c_qbit: int, t_qbit: int, bond_dim: Optional[int] = None):
         """
         Applies swap operation on two neighbouring qubits.
         """
-        return self.apply_multi_gate(op="SWAP", c_qbit=c_qbit, t_qbit=t_qbit, param=None)
+        return self.apply_multi_gate(op="SWAP", c_qbit=c_qbit, t_qbit=t_qbit, param=None, bond_dim=bond_dim)
 
-    def c_not(self, c_qbit: int, t_qbit: int):
+    def c_not(self, c_qbit: int, t_qbit: int, bond_dim: Optional[int] = None):
         """
         Applies CNOT gate to the MPS for neighbouring qubits.
         """
-        return self.apply_multi_gate(op="X", c_qbit=c_qbit, t_qbit=t_qbit, param=None)
+        return self.apply_multi_gate(op="X", c_qbit=c_qbit, t_qbit=t_qbit, param=None, bond_dim=bond_dim)
 
-    def c_phase(self, c_qbit: int, t_qbit: int, phase: float):
+    def c_phase(self, c_qbit: int, t_qbit: int, phase: float, bond_dim: Optional[int] = None):
         """
         Applies controlled phase gate to the MPS for neighbouring qubits.
         """
-        return self.apply_multi_gate(op="Z", c_qbit=c_qbit, t_qbit=t_qbit, param=phase)
+        return self.apply_multi_gate(op="Z", c_qbit=c_qbit, t_qbit=t_qbit, param=phase, bond_dim=bond_dim)
