@@ -6,6 +6,19 @@ from typing import Optional
 
 
 class TensorNetwork:
+
+    @classmethod
+    def QFT(cls, n_qubits: int, state: str):
+        qc = cls(n_qubits, state)
+        for i in range(n_qubits):
+            qc.hadamard(i)
+            ## TODO: Make qubits adjacent and restore ordering
+            for j in range(i, n_qubits):
+                theta = np.pi / 2 ** (j + 1)
+                qc.c_phase(i, j, phase=theta)
+
+        return qc
+
     def __init__(self, n_qubits: int, state: Optional[str] = None):
         self.n_qubits: int = n_qubits
         self.mps: MPS = MPS(n_qubits)
@@ -159,12 +172,6 @@ class TensorNetwork:
 
         return self
 
-    def hadamard(self, qbit: int):
-        """
-        Applies hadamard gate to the MPS through tensor contraction to a given qubit.
-        """
-        return self.apply_single_gate(op="H", qbit=qbit, param=None)
-
     def x(self, qbit: int, param: Optional[float] = None):
         """
         Applies X gate to the MPS through tensor contraction to a given qubit.
@@ -195,13 +202,19 @@ class TensorNetwork:
         """
         return self.apply_single_gate(op="Z", qbit=qbit, param=param)
 
+    def hadamard(self, qbit: int):
+        """
+        Applies hadamard gate to the MPS through tensor contraction to a given qubit.
+        """
+        return self.apply_single_gate(op="H", qbit=qbit, param=None)
+
     def swap(self, c_qbit: int, t_qbit: int):
         """
         Applies swap operation on two neighbouring qubits.
         """
         return self.apply_multi_gate(op="SWAP", c_qbit=c_qbit, t_qbit=t_qbit, param=None)
 
-    def cnot(self, c_qbit: int, t_qbit: int):
+    def c_not(self, c_qbit: int, t_qbit: int):
         """
         Applies CNOT gate to the MPS for neighbouring qubits.
         """
