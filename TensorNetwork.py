@@ -44,28 +44,38 @@ class TensorNetwork:
     def initialize(self, state: str):
         return self.mps.initialize(state)
 
-    def hadamard(self, qbit: int):
+    def retrieve_amplitude_of(self, state: str):
         """
-        Applies hadamard gate to the MPS through tensor contraction to a given qubit.
+        Retrieves the amplitude of the given state
         """
-        assert qbit in range(self.n_qubits)
-        H = Tensor.gate("H")
+        return self.mps.retrieve_amplitude_of(state=state)
 
-        if self[qbit].ndim == 2:    ## Edge Tensor
-            self[qbit] = Tensor(np.einsum("lk, kj -> lj", H, self[qbit]))
+    def apply_single_gate(self, op: str, qbit: int, param: Optional[float] = None):
+        assert qbit in range(self.n_qubits)
+
+        GATE = Tensor.gate(op=op, param=param)
+
+        if self[qbit].ndim == 2:  ## Edge Tensor
+            self[qbit] = Tensor(np.einsum("lk, kj -> lj", GATE, self[qbit]))
         elif self[qbit].ndim == 3:  ## Middle Tensor
-            self[qbit] = Tensor(np.einsum("lk, ikj -> ilj", H, self[qbit]))
+            self[qbit] = Tensor(np.einsum("lk, ikj -> ilj", GATE, self[qbit]))
 
         return self
 
-    def swap(self, c_qbit: int, t_qbit: int):
+    def apply_multi_gate(self, op: str, c_qbit: int, t_qbit: int, param: Optional[float] = None):
         """
-        Applies swap operation on two neighbouring qubits
+        Applies 2-qubit operations on two neighbouring qubits
+        -----------------------------------------------------
+        :param op: Name of the operation
+        :param c_qbit: Control qubit
+        :param t_qbit: Target qubit
+        :param param: Parameter value of the operation
+        :return: TensorNetwork with the operation applied
         """
         assert c_qbit in range(self.n_qubits) and t_qbit in range(self.n_qubits)
         assert c_qbit + 1 == t_qbit
 
-        SWAP = Tensor.c_gate("SWAP")
+        GATE = Tensor.c_gate(op=op, param=param)
         Mc, Mt = self[c_qbit], self[t_qbit]
 
         if c_qbit == 0:
@@ -73,11 +83,11 @@ class TensorNetwork:
             T1 = np.einsum("ij, jlk -> ilk", Mc, Mt)
 
             ## Contract Tensor with 4d-Tensor Swap Gate
-            T2 = np.einsum("vwil, ilk -> vwk", SWAP, T1)
+            T2 = np.einsum("vwil, ilk -> vwk", GATE, T1)
 
             ## Singular Value Decomposition
             p1, p2, b2 = T2.shape
-            T2 = T2.reshape(p1, p2*b2)
+            T2 = T2.reshape(p1, p2 * b2)
             U, S, V = np.linalg.svd(T2, full_matrices=False)
 
             ## Adjust bond_dim (w/o truncation)
@@ -90,16 +100,16 @@ class TensorNetwork:
             V = V.reshape(bond, p2, b2)
             U = np.einsum("ij, jj -> ij", U, S)
 
-        elif t_qbit == self.n_qubits-1:
+        elif t_qbit == self.n_qubits - 1:
             ## Contract both tensors to a 3d-Tensor
             T1 = np.einsum("jik, kl -> jil", Mc, Mt)
 
             ## Contract Tensor with 4d-Tensor Swap Gate
-            T2 = np.einsum("vwil, jil -> jvw", SWAP, T1)
+            T2 = np.einsum("vwil, jil -> jvw", GATE, T1)
 
             ## Singular Value Decomposition
             b1, p1, p2 = T2.shape
-            T2 = T2.reshape(b1*p1, p2)
+            T2 = T2.reshape(b1 * p1, p2)
             U, S, V = np.linalg.svd(T2, full_matrices=False)
 
             ## Adjust bond_dim (w/o truncation)
@@ -117,11 +127,11 @@ class TensorNetwork:
             T1 = np.einsum("jik, klm -> jilm", Mc, Mt)
 
             ## Contract Tensor with 4d-Tensor Swap Gate
-            T2 = np.einsum("vwil, jilm -> jvwm", SWAP, T1)
+            T2 = np.einsum("vwil, jilm -> jvwm", GATE, T1)
 
             ## Singular Value Decomposition
             b1, p1, p2, b2 = T2.shape
-            T2 = T2.reshape(p1*b1, p2*b2)
+            T2 = T2.reshape(p1 * b1, p2 * b2)
             U, S, V = np.linalg.svd(T2, full_matrices=False)
 
             ## Adjust bond_dim (w/o truncation)
@@ -139,19 +149,35 @@ class TensorNetwork:
 
         return self
 
+    def hadamard(self, qbit: int):
+        """
+        Applies hadamard gate to the MPS through tensor contraction to a given qubit.
+        """
+        return self.apply_single_gate(op="H", qbit=qbit, param=None)
+
+    def x(self, qbit: int, param: Optional[float] = None):
+        return self.apply_single_gate(op="X", qbit=qbit, param=param)
+
+    def y(self, qbit: int, param: Optional[float] = None):
+        return self.apply_single_gate(op="Y", qbit=qbit, param=param)
+
+    def z(self, qbit: int, param: Optional[float] = None):
+        return self.apply_single_gate(op="Z", qbit=qbit, param=param)
+
+    def swap(self, c_qbit: int, t_qbit: int):
+        """
+        Applies swap operation on two neighbouring qubits
+        """
+        return self.apply_multi_gate(op="SWAP", c_qbit=c_qbit, t_qbit=t_qbit, param=None)
+
     def cnot(self, c_qbit: int, t_qbit: int):
         """
         Applies controlled phase gate to the MPS through tensor contraction to two neighbouring qubits.
         """
-        assert c_qbit in range(self.n_qubits) and t_qbit in range(self.n_qubits)
-        assert c_qbit < t_qbit
-        pass
+        return self.apply_multi_gate(op="X", c_qbit=c_qbit, t_qbit=t_qbit, param=None)
 
-    def c_phase(self, c_qbit: int, t_qbit: int):
-        """Applies controlled phase gate to the MPS through tensor contraction to two neighbouring qubits."""
-        ## TODO
-        return self
-
-    def retrieve_amplitude_of(self, state: str):
-        return self.mps.retrieve_amplitude_of(state=state)
-
+    def c_phase(self, c_qbit: int, t_qbit: int, phase: float):
+        """
+        Applies controlled phase gate to the MPS through tensor contraction to two neighbouring qubits.
+        """
+        return self.apply_multi_gate(op="Z", c_qbit=c_qbit, t_qbit=t_qbit, param=phase)
