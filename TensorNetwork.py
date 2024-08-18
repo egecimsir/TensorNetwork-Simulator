@@ -9,7 +9,7 @@ from typing import Optional
 class TensorNetwork:
 
     @classmethod
-    def QFT(cls, state: str, bond_dim: Optional[int] = None):
+    def QFT(cls, state: str, bond_dim: Optional[int] = None):  ## fixme
         """
          QFT Tensor Network with Gate-Ansatz
         -------------------------------------
@@ -24,23 +24,26 @@ class TensorNetwork:
 
         for i in range(n_qubits):
             qc.hadamard(i)
-            for j in range(i+1, n_qubits):
-                ## If not adjacent
-                if i + 1 != j: qc.make_adjacent(i, j, bond_dim)  ## fixme
+            for j in range(i + 1, n_qubits):
+                if i + 1 != j:  ## If not adjacent
+                    qc.make_adjacent(i, j, bond_dim)
 
-                qc.c_phase(i+1, j, phase=np.pi / 2 ** (j + 1))   ## fixme
+                qc.c_phase(i, j, phase=np.pi / 2**j, bond_dim=bond_dim)
 
-                ## If not adjacent
-                if i + 1 != j: qc.restore_order(i, j, bond_dim)  ## fixme
+                if i + 1 != j:  ## If not adjacent
+                    qc.restore_order(i, j, bond_dim)
 
         return qc
 
     def __init__(self, n_qubits: int, state: Optional[str] = None):
         self.n_qubits: int = n_qubits
         self.mps: MPS = MPS(n_qubits)
-
         if state is not None:
             self.initialize(state)
+
+        ## Tracking
+        self.ops_applied = 0
+        self.ops_log = []
 
     def __getitem__(self, item):
         return self.mps[item]
@@ -98,6 +101,10 @@ class TensorNetwork:
             self[qbit] = Tensor(np.einsum("lk, kj -> lj", GATE, self[qbit]))
         elif self[qbit].ndim == 3:  ## Middle Tensor
             self[qbit] = Tensor(np.einsum("lk, ikj -> ilj", GATE, self[qbit]))
+
+        ## Tracking
+        self.ops_log.append((GATE.name, qbit, param))
+        self.ops_applied += 1
 
         return self
 
@@ -204,6 +211,10 @@ class TensorNetwork:
         ## Assign resulting tensors back to qubits
         self[c_qbit], self[t_qbit] = Tensor(U), Tensor(V)
 
+        ## Tracking
+        self.ops_log.append((GATE.name, c_qbit, t_qbit, param, bond_dim))
+        self.ops_applied += 1
+
         return self
 
     def make_adjacent(self, c_qbit: int, t_qbit: int, bond_dim: Optional[int] = None):
@@ -218,7 +229,8 @@ class TensorNetwork:
         assert c_qbit < t_qbit
 
         for i in range(t_qbit, c_qbit + 1, -1):
-            self.swap(i, i - 1, bond_dim)
+            print(i)
+            self.swap(i - 1, i, bond_dim)
 
     def restore_order(self, c_qbit: int, t_qbit: int, bond_dim: Optional[int] = None):
         """
