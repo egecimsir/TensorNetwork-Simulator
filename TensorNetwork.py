@@ -219,7 +219,6 @@ class TensorNetwork:
 
         return self
 
-    ## TODO:
     def move_tensor(self, T: int, to: int, bond_dim: Optional[int] = None):
         """
         Moves tensor t to a given site in the network using swaps.
@@ -228,7 +227,16 @@ class TensorNetwork:
         :param to: Site to tensor to move to
         :param bond_dim: Max bond dimension for swaps
         """
-        pass
+        assert T in range(self.n_qubits) and to in range(self.n_qubits)
+
+        if T > to:  ## move tensor T backward
+            for i in range(T, to, -1):
+                self.swap(i-1, i, bond_dim)
+        elif T < to:  ## move tensor T backward
+            for i in range(T, to):
+                self.swap(i, i+1, bond_dim)
+        else:
+            pass
 
     def x(self, qbit: int, param: Optional[float] = None):
         """
