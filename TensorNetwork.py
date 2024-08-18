@@ -8,8 +8,9 @@ from typing import Optional
 
 class TensorNetwork:
 
+    ## TODO:
     @classmethod
-    def QFT(cls, state: str, bond_dim: Optional[int] = None):  ## fixme
+    def QFT(cls, state: str, bond_dim: Optional[int] = None):
         """
          QFT Tensor Network with Gate-Ansatz
         -------------------------------------
@@ -26,12 +27,12 @@ class TensorNetwork:
             qc.hadamard(i)
             for j in range(i + 1, n_qubits):
                 if i + 1 != j:  ## If not adjacent
-                    qc.make_adjacent(i, j, bond_dim)
+                    qc.move_tensor(T=..., to=..., bond_dim=bond_dim)
 
                 qc.c_phase(i, j, phase=np.pi / 2**(j-i), bond_dim=bond_dim)
 
                 if i + 1 != j:  ## If not adjacent
-                    qc.restore_order(i, j, bond_dim)
+                    qc.move_tensor(T=..., to=..., bond_dim=bond_dim)
 
         return qc
 
@@ -126,7 +127,7 @@ class TensorNetwork:
         :return: TensorNetwork with the operation applied
         """
         assert c_qbit in range(self.n_qubits) and t_qbit in range(self.n_qubits)
-        assert c_qbit + 1 == t_qbit
+        assert abs(t_qbit - c_qbit) == 1
 
         GATE = Tensor.c_gate(op=op, param=param)
         Mc, Mt = self[c_qbit], self[t_qbit]
@@ -218,34 +219,16 @@ class TensorNetwork:
 
         return self
 
-    def make_adjacent(self, c_qbit: int, t_qbit: int, bond_dim: Optional[int] = None):  ## fixme or delete
+    ## TODO:
+    def move_tensor(self, T: int, to: int, bond_dim: Optional[int] = None):
         """
-        Brings target tensor near to the control tensor by applying series of swaps.
-        ----------------------------------------------------------------------------
-        :param c_qbit: Tensor to be fixed at its position
-        :param t_qbit: Tensor to bring backwards
-        :param bond_dim: max bond_dim for swap operations
+        Moves tensor t to a given site in the network using swaps.
+        ----------------------------------------------------------
+        :param T: Tensor to be moved
+        :param to: Site to tensor to move to
+        :param bond_dim: Max bond dimension for swaps
         """
-        assert c_qbit in range(self.n_qubits) and t_qbit in range(self.n_qubits)
-        assert c_qbit < t_qbit
-
-        for i in range(t_qbit, c_qbit + 1, -1):
-            print(i)
-            self.swap(i - 1, i, bond_dim)
-
-    def restore_order(self, c_qbit: int, t_qbit: int, bond_dim: Optional[int] = None):  ## fixme or delete
-        """
-        Brings the tensor next of c_qbit back to site t_qbit by applying series of swaps.
-        ---------------------------------------------------------------------------------
-        :param c_qbit: Tensor to be fixed at its position
-        :param t_qbit: Tensor to be moved
-        :param bond_dim: max bond_dim for swap operations
-        """
-        assert c_qbit in range(self.n_qubits) and t_qbit in range(self.n_qubits)
-        assert c_qbit < t_qbit
-
-        for i in range(c_qbit + 1, t_qbit):
-            self.swap(i, i + 1, bond_dim)
+        pass
 
     def x(self, qbit: int, param: Optional[float] = None):
         """
