@@ -15,7 +15,7 @@ class TensorNetwork:
         -------------------------------------
         :param state: Initial state to be fourier transformed
         :param bond_dim: Maximum bond dimension in the network
-        :return: TensorNetwork with QFT applied
+        :return: TensorNetwork with QFT applied on given state
         """
         assert check_input_state(state)
 
@@ -28,7 +28,7 @@ class TensorNetwork:
                 if i + 1 != j:  ## If not adjacent
                     qc.make_adjacent(i, j, bond_dim)
 
-                qc.c_phase(i, j, phase=np.pi / 2**j, bond_dim=bond_dim)
+                qc.c_phase(i, j, phase=np.pi / 2**(j-i), bond_dim=bond_dim)
 
                 if i + 1 != j:  ## If not adjacent
                     qc.restore_order(i, j, bond_dim)
@@ -38,6 +38,7 @@ class TensorNetwork:
     def __init__(self, n_qubits: int, state: Optional[str] = None):
         self.n_qubits: int = n_qubits
         self.mps: MPS = MPS(n_qubits)
+
         if state is not None:
             self.initialize(state)
 
@@ -217,7 +218,7 @@ class TensorNetwork:
 
         return self
 
-    def make_adjacent(self, c_qbit: int, t_qbit: int, bond_dim: Optional[int] = None):
+    def make_adjacent(self, c_qbit: int, t_qbit: int, bond_dim: Optional[int] = None):  ## fixme or delete
         """
         Brings target tensor near to the control tensor by applying series of swaps.
         ----------------------------------------------------------------------------
@@ -232,7 +233,7 @@ class TensorNetwork:
             print(i)
             self.swap(i - 1, i, bond_dim)
 
-    def restore_order(self, c_qbit: int, t_qbit: int, bond_dim: Optional[int] = None):
+    def restore_order(self, c_qbit: int, t_qbit: int, bond_dim: Optional[int] = None):  ## fixme or delete
         """
         Brings the tensor next of c_qbit back to site t_qbit by applying series of swaps.
         ---------------------------------------------------------------------------------
