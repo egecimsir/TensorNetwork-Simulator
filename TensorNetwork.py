@@ -8,7 +8,6 @@ from typing import Optional
 
 class TensorNetwork:
 
-    ## TODO:
     @classmethod
     def QFT(cls, state: str, bond_dim: Optional[int] = None):
         """
@@ -25,14 +24,14 @@ class TensorNetwork:
 
         for i in range(n_qubits):
             qc.hadamard(i)
-            for j in range(i + 1, n_qubits):
+            for j in range(i+1, n_qubits):
                 if i + 1 != j:  ## If not adjacent
-                    qc.move_tensor(T=..., to=..., bond_dim=bond_dim)
+                    qc.move_tensor(T=j, to=i+1, bond_dim=bond_dim)
 
-                qc.c_phase(i, j, phase=np.pi / 2**(j-i), bond_dim=bond_dim)
+                qc.c_phase(i, i+1, phase=np.pi / 2**(j-i), bond_dim=bond_dim)
 
                 if i + 1 != j:  ## If not adjacent
-                    qc.move_tensor(T=..., to=..., bond_dim=bond_dim)
+                    qc.move_tensor(T=i+1, to=j, bond_dim=bond_dim)
 
         return qc
 
