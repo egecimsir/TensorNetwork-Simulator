@@ -19,7 +19,6 @@ class Tensor:
     """
     Imitation of the np.ndarray, with only complex values
     """
-
     @classmethod
     def qubit(cls, state: int):
         assert int(state) in (0, 1)
@@ -34,7 +33,7 @@ class Tensor:
         else:
             assert op != "H"
             arr = create_rotational_unitary(op, param)
-            name = "R" + op
+            name = "R" + op + f"({param:.2f})"
         return cls(arr, name)
 
     @classmethod
