@@ -49,6 +49,16 @@ class Tensor:
 
         return cls(c_gate, name=name).reshape(2, 2, 2, 2)
 
+    @classmethod
+    def phase_tensor(cls, phase: float):
+        arr = np.array([[1, 0], [0, np.exp(np.exp(1j * phase))]])
+        return cls(arr, name=f"P({phase})")
+
+    @classmethod
+    def copy_tensor(cls):
+        arr = np.array([[[1, 0], [0, 0]], [[0, 0], [0, 1]]])
+        return cls(arr, name="Copy")
+
     def __init__(self, data, name: Optional[str] = None):
         self.array = np.asarray(data, complex)
         self.name = name
