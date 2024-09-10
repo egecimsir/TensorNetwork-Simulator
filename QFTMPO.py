@@ -40,7 +40,8 @@ class QFTMPO:
             ## Add phase gates to sites below
             phase = np.pi / 2
             for j in range(i+1, self.n_qubits):
-                self.sites[j].append(Tensor.phase_tensor(phase).name)
+                P = Tensor.phase_tensor(phase=phase, ndim=4 if j != len(self) - 1 else 3)
+                self.sites[j].append(P.name)
                 phase /= 2
 
         return self
@@ -88,6 +89,10 @@ class QFTMPO:
 
     ## TODO: Append tensors instead of their names
     def put_phase_mpo(self, site: int):
+        """
+        Appends Hadamard and Copy tensors to the given site, Phase tensors all the sites below.
+        ---------------------------------------------------------------------------------------
+        """
         assert site in range(self.n_qubits-1)
         ## Add hadamard tensor
         self.sites[site].append(Tensor.gate("H").name)
@@ -104,7 +109,7 @@ class QFTMPO:
 
         return self
 
-    ## TODO: Arrange position of dimensions of needed
+    ## TODO: Arrange position of dimensions if needed
     def contract_site(self, site: int):
         """
         Contracts all the tensors in a given site until single tensor remains.
@@ -117,7 +122,6 @@ class QFTMPO:
         if site == 0:
             H, C = self.sites[site]
             T = np.einsum("ij, jkl -> ikl", H, C)
-
             self.sites[site] = [T]
 
         ### Consists of ###
@@ -125,10 +129,12 @@ class QFTMPO:
         # then: T3--P3
         # lastly: T3--H2
         elif site == self.n_qubits-1:
+            ## TODO
             pass
 
         ### Consists of ###
         # PhaseMPO begin: P4--H2--C3--U3 | T4--H2--C3--U3
         # Middle sites:  P4--P4--U3 | T4--P4--U3
         else:
+            ## TODO
             pass
