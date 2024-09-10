@@ -50,9 +50,18 @@ class Tensor:
         return cls(c_gate, name=name).reshape(2, 2, 2, 2)
 
     @classmethod
-    def phase_tensor(cls, phase: float):
-        arr = np.array([[1, 0], [0, np.exp(np.exp(1j * phase))]])
-        return cls(arr, name=f"P({phase})")
+    def phase_tensor(cls, phase: float, ndim: int = 2):
+        assert ndim in (2, 3, 4)
+        arr = np.array([[1, 0, 0, 0],
+                        [0, 1, 0, 0],
+                        [0, 0, 1, 0],
+                        [0, 0, 0, np.exp(np.exp(1j * phase))]])
+        if ndim == 3:
+            arr = np.expand_dims(arr, axis=0)
+        if ndim == 4:
+            arr = arr.reshape(2, 2, 2, 2)
+
+        return cls(arr, name=f"P{ndim}({phase:.2f})")
 
     @classmethod
     def copy_tensor(cls):
