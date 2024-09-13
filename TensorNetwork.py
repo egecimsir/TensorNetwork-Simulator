@@ -10,16 +10,21 @@ from typing import Optional
 class TensorNetwork:
 
     @classmethod
-    def generate_entangled_circuit(cls, n_qubits: int) -> MPS:
+    def generate_entangled_circuit(cls, n_qubits: int, ent_level: float) -> MPS:
+        assert 0 <= ent_level <= 1
         qc = cls(n_qubits=n_qubits)
 
-        ## Apply RX on each even qubits
-        for i in range(0, n_qubits, 2):
-            qc.x(i, param=2*np.pi / random.randint(0, 100))
+        qubits = int(n_qubits * ent_level)
 
-        ## Apply CNOT on each odd qubits
-        for i in range(1, n_qubits, 2):
-            qc.c_not(i, i+1)
+        ## Entangle each two qubits up to given percentage of qubits
+        for i in range(0, qubits, 2):
+            qc.x(i, param=2*np.pi / random.randint(0, 48))
+            qc.c_not(i, i + 1)
+
+        ## Entangle all qubits that are already entangled
+        for i in range(1, qubits, 2):
+            qc.x(i, param=2 * np.pi / random.randint(0, 48))
+            qc.c_not(i, i + 1)
 
         return qc.mps
 
@@ -48,6 +53,17 @@ class TensorNetwork:
                 if i + 1 != j:  ## If not adjacent
                     qc.move_tensor(T=i+1, to=j, bond_dim=bond_dim)
 
+        return qc
+
+    @classmethod
+    def generate_randomized_circuit(cls, depth: int):
+        assert depth >= 1
+        pass
+
+    @classmethod
+    def from_MPS(cls, mps: MPS):
+        qc = cls(n_qubits=mps.n_qubits)
+        qc.mps = mps
         return qc
 
     def __init__(self, n_qubits: int, state: Optional[str] = None):
