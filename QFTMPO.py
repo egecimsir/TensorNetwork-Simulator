@@ -68,7 +68,7 @@ class QFTMPO:
                 if i != s:  ## Don't apply SVD for first site of PhaseMPO.
 
                     T = self.sites[i].pop(0)
-                    ## TODO: reshape T?
+                    ## TODO: reshape T as in TensorNetwork-ApplyMultiGate
 
                     U, S, V = np.linalg.svd(T, full_matrices=False)
                     U = np.einsum("ij, jj -> ij", U, np.diag(S))
@@ -118,29 +118,31 @@ class QFTMPO:
         """
         assert site in range(self.n_qubits)
 
-        ## Consists of: H2--C3
+        ## First site
         if site == 0:
             H, C = self.sites[site]
             T = np.einsum("ij, jkl -> ikl", H, C)
-            self.sites[site] = [Tensor(T)]
 
-        ### Consists of ###
-        # first: P3--P3
-        # then: T3--P3
-        # lastly: T3--H2
+        ## Last site
         elif site == self.n_qubits-1:
             T1, T2 = self.sites[site]
-            T = np.einsum("" if T1.ndim == T2.ndim else "", T1, T2)
-            self.sites[site] = [Tensor(T)]
+            if T1.ndim == T2.ndim:
+                T = np.einsum("", T1, T2)  ## TODO: T3|P3--P3
+            else:
+                T = np.einsum("", T1, T2)  ## TODO: T3--H2
 
-
-        ### Consists of ###
-        # PhaseMPO begin: T4--H2--C3--U3
-        # Middle sites:   T4--P4--U3
+        ## Middle sites
         else:
-            if len(self.sites[site]) == 3:
-                pass
-            elif len(self.sites[site]) == 4:
-                pass
-            else:  # len==2
-                pass
+            if len(self.sites[site]) == 3:  # PhaseMPO below: T4--P4--U3
+                T1, P, U = self.sites[site]
+                T = np.einsum("", T1, P, U)
+
+            elif len(self.sites[site]) == 4:  # PhaseMPO begin: T4--H2--C3--U3
+                T1, H, C, U = self.sites[site]
+                T = np.einsum("", T1, H, C, U)
+
+            else:
+                raise ValueError
+
+        self.sites[site] = [Tensor(T)]
+
