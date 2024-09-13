@@ -1,4 +1,6 @@
 import numpy as np
+
+from MatrixProductState import MPS
 from Tensor import Tensor
 from typing import List
 
@@ -7,6 +9,15 @@ class QFTMPO:
     def __init__(self, n_qubits: int):
         self.n_qubits: int = n_qubits
         self.sites: List[List[Tensor]] = [[] for _ in range(n_qubits)]
+
+
+    def __call__(self, mps: MPS):
+        """
+        MPO-MPS multiplication.
+        -----------------------
+        """
+        assert len(mps) == len(self)
+        pass
 
     def __len__(self):
         return self.n_qubits
@@ -68,14 +79,24 @@ class QFTMPO:
                 if i != s:  ## Don't apply SVD for first site of PhaseMPO.
 
                     T = self.sites[i].pop(0)
-                    ## TODO: reshape T as in TensorNetwork-ApplyMultiGate
+
+                    ## Reshape Tensor into order-2 for the SVD
+                    if T.ndim == 4:
+                        v1, v2, h1, h2 = T.shape
+                        T.reshape(v1*v2, h1*h2)
+
+                    elif T.ndim == 5:
+                        v1, v2, v3, h1, h2 = T.shape
+                        T.reshape(v1*v2*v3, h1*h2)
+
+                    else:
+                        raise ValueError
 
                     U, S, V = np.linalg.svd(T, full_matrices=False)
                     U = np.einsum("ij, jj -> ij", U, np.diag(S))
 
-                    self.sites[i].append(Tensor(V))
+                    self.sites[i] = [Tensor(V)]
                     self.sites[i-1].append(Tensor(U, "U"))
-
 
             ## SVD and contract downwards
             for i in range(s, self.n_qubits):
@@ -109,7 +130,6 @@ class QFTMPO:
 
         return self
 
-    ## TODO: Arrange position of dimensions if needed
     def contract_site(self, site: int):
         """
         Contracts all the tensors in a given site until single tensor remains.
@@ -121,28 +141,29 @@ class QFTMPO:
         ## First site
         if site == 0:
             H, C = self.sites[site]
-            T = np.einsum("ij, jkl -> ikl", H, C)
+            T = np.einsum("ij, kjb -> kib", H, C)
 
         ## Last site
         elif site == self.n_qubits-1:
             T1, T2 = self.sites[site]
             if T1.ndim == T2.ndim:
-                T = np.einsum("", T1, T2)  ## TODO: T3|P3--P3
+                T = np.einsum("kij, ajb -> kaib", T1, T2)  ## T3--P3
             else:
-                T = np.einsum("", T1, T2)  ## TODO: T3--H2
+                T = np.einsum("kij, jb -> kib", T1, T2)  ## T3--H2
 
         ## Middle sites
         else:
-            if len(self.sites[site]) == 3:  # PhaseMPO below: T4--P4--U3
-                T1, P, U = self.sites[site]
-                T = np.einsum("", T1, P, U)
+            if len(self.sites[site]) == 3:  # PhaseMPO below:
+                T4, P, U = self.sites[site]
+                T = np.einsum("abij, cdjk, bdm -> acmik", T4, P, U)  ## T4--P4--U3
 
-            elif len(self.sites[site]) == 4:  # PhaseMPO begin: T4--H2--C3--U3
-                T1, H, C, U = self.sites[site]
-                T = np.einsum("", T1, H, C, U)
+            elif len(self.sites[site]) == 4:  # PhaseMPO begin:
+                T4, H, C, U = self.sites[site]
+                T = np.einsum("abij, jk, ckl, bcm -> amil", T4, H, C, U)  ## T4--H2--C3--U3
 
             else:
                 raise ValueError
 
+        ## Replace site with new tensor
         self.sites[site] = [Tensor(T)]
 

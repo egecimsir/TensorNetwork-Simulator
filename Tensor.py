@@ -53,10 +53,8 @@ class Tensor:
     def phase_tensor(cls, phase: float, ndim: int = 2):
         assert ndim in (2, 3, 4)
         p = np.exp(1j*phase)
-        arr = np.array([[1, 0, 0, 0],
-                        [0, 1, 0, 0],
-                        [0, 0, 1, 0],
-                        [0, 0, 0, p]])
+        arr = np.array([[1, 0, 0, 0], [0, 1, 0, 0],
+                        [0, 0, 1, 0], [0, 0, 0, p]])
         if ndim == 3:
             arr = np.array([[[1, 0], [0, 1]],
                             [[1, 0], [0, p]]])
