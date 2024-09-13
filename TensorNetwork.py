@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 from Tensor import Tensor
 from MatrixProductState import MPS
@@ -7,6 +8,20 @@ from typing import Optional
 
 
 class TensorNetwork:
+
+    @classmethod
+    def generate_entangled_circuit(cls, n_qubits: int) -> MPS:
+        qc = cls(n_qubits=n_qubits)
+
+        ## Apply RX on each even qubits
+        for i in range(0, n_qubits, 2):
+            qc.x(i, param=2*np.pi / random.randint(0, 100))
+
+        ## Apply CNOT on each odd qubits
+        for i in range(1, n_qubits, 2):
+            qc.c_not(i, i+1)
+
+        return qc.mps
 
     @classmethod
     def QFT(cls, state: str, bond_dim: Optional[int] = None):
