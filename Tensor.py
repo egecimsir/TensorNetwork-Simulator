@@ -68,7 +68,7 @@ class Tensor:
         arr = np.array([[[1, 0], [0, 0]], [[0, 0], [0, 1]]])
         return cls(arr, name="Copy")
 
-    def __init__(self, data, name: Optional[str] = None):
+    def __init__(self, data, name: Optional[str] = "Tensor"):
         self.array = np.asarray(data, complex)
         self.name = name
 
@@ -82,7 +82,7 @@ class Tensor:
         return len(self.array)
 
     def __repr__(self):
-        return f"Tensor{self.array.shape}"
+        return f"{self.name}{self.array.shape}"
 
     def __str__(self):
         return str(self.array)

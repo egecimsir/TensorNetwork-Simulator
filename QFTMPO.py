@@ -6,7 +6,7 @@ from typing import List
 class QFTMPO:
     def __init__(self, n_qubits: int):
         self.n_qubits: int = n_qubits
-        self.sites: List[List] = [[] for _ in range(n_qubits)]
+        self.sites: List[List[Tensor]] = [[] for _ in range(n_qubits)]
 
     def __len__(self):
         return self.n_qubits
@@ -20,7 +20,8 @@ class QFTMPO:
     def __repr__(self):
         st = ""
         for i, lst in enumerate(self.sites):
-            st += f"s{i}: {str(lst)}\n"
+            names = [t.name for t in lst]
+            st += f"s{i}: {str(names)}\n"
         return st
 
     def initialize_qft(self):
@@ -31,17 +32,17 @@ class QFTMPO:
         ## For each site (qubit) in the network:
         for i in range(self.n_qubits):
             ## Add hadamard tensor
-            self.sites[i].append(Tensor.gate("H").name)
+            self.sites[i].append(Tensor.gate("H"))
 
             ## Add copy tensor
             if i != self.n_qubits-1:
-                self.sites[i].append(Tensor.copy_tensor().name)
+                self.sites[i].append(Tensor.copy_tensor())
 
             ## Add phase gates to sites below
             phase = np.pi / 2
             for j in range(i+1, self.n_qubits):
                 P = Tensor.phase_tensor(phase=phase, ndim=4 if j != len(self) - 1 else 3)
-                self.sites[j].append(P.name)
+                self.sites[j].append(P)
                 phase /= 2
 
         return self
@@ -64,16 +65,16 @@ class QFTMPO:
                 self.contract_site(i)
 
                 ## Apply SVD to the site; leave V at site, push U to the site above.
-                ## Don't apply SVD for first site of PhaseMPO.
-                if i != s:
+                if i != s:  ## Don't apply SVD for first site of PhaseMPO.
 
                     T = self.sites[i].pop(0)
                     ## TODO: reshape T?
+
                     U, S, V = np.linalg.svd(T, full_matrices=False)
                     U = np.einsum("ij, jj -> ij", U, np.diag(S))
 
-                    self.sites[i].append(V)
-                    self.sites[i-1].append(U)
+                    self.sites[i].append(Tensor(V))
+                    self.sites[i-1].append(Tensor(U, "U"))
 
 
             ## SVD and contract downwards
@@ -87,7 +88,6 @@ class QFTMPO:
 
         return self
 
-    ## TODO: Append tensors instead of their names
     def put_phase_mpo(self, site: int):
         """
         Appends Hadamard and Copy tensors to the given site, Phase tensors all the sites below.
@@ -95,16 +95,16 @@ class QFTMPO:
         """
         assert site in range(self.n_qubits-1)
         ## Add hadamard tensor
-        self.sites[site].append(Tensor.gate("H").name)
+        self.sites[site].append(Tensor.gate("H"))
 
         ## Add copy tenor
-        self.sites[site].append(Tensor.copy_tensor().name)
+        self.sites[site].append(Tensor.copy_tensor())
 
         ## Add phase tensors to sites below
         phase = np.pi / 2
         for s in range(site+1, self.n_qubits):
             P = Tensor.phase_tensor(phase=phase, ndim=4 if s != len(self)-1 else 3)
-            self.sites[s].append(P.name)
+            self.sites[s].append(P)
             phase /= 2
 
         return self
@@ -122,19 +122,25 @@ class QFTMPO:
         if site == 0:
             H, C = self.sites[site]
             T = np.einsum("ij, jkl -> ikl", H, C)
-            self.sites[site] = [T]
+            self.sites[site] = [Tensor(T)]
 
         ### Consists of ###
         # first: P3--P3
         # then: T3--P3
         # lastly: T3--H2
         elif site == self.n_qubits-1:
-            ## TODO
-            pass
+            T1, T2 = self.sites[site]
+            T = np.einsum("" if T1.ndim == T2.ndim else "", T1, T2)
+            self.sites[site] = [Tensor(T)]
+
 
         ### Consists of ###
-        # PhaseMPO begin: P4--H2--C3--U3 | T4--H2--C3--U3
-        # Middle sites:  P4--P4--U3 | T4--P4--U3
+        # PhaseMPO begin: T4--H2--C3--U3
+        # Middle sites:   T4--P4--U3
         else:
-            ## TODO
-            pass
+            if len(self.sites[site]) == 3:
+                pass
+            elif len(self.sites[site]) == 4:
+                pass
+            else:  # len==2
+                pass
