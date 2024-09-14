@@ -29,13 +29,13 @@ class QFTMPO:
         self.sites[key] = value
 
     def __repr__(self):
-        st = ""
+        st = f"{self.__class__.__name__}({self.n_qubits})\n---------------\n"
         for i, lst in enumerate(self.sites):
             names = [t.name for t in lst]
             st += f"s{i}: {str(names)}\n"
         return st
 
-    def initialize_qft(self):
+    def display_qft(self):
         """
         Initializes sites with tensors according to QFT schema.
         -------------------------------------------------------
@@ -56,7 +56,8 @@ class QFTMPO:
                 self.sites[j].append(P)
                 phase /= 2
 
-        return self
+        print(self)
+        self.sites = [[] for _ in range(self.n_qubits)]
 
     def zip_up(self):
         """
@@ -127,16 +128,10 @@ class QFTMPO:
                     self.sites[i] = [Tensor(V, name=f"T{V.ndim}")]
                     self.sites[i-1].append(Tensor(U, name=f"U{U.ndim}"))
 
-            ## TODO: delete
-            print(self)
-            for site in self.sites:
-                t = site[0]
-                print(t.shape)
-
             ## TODO: debug
             ## SVD and contract downwards
             for i in range(s, self.n_qubits):
-
+                break
                 ## Contract tensor with V above
                 if len(self[s]) == 2:
                     T1, V = self[s]
