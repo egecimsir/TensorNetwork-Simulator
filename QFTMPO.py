@@ -2,6 +2,7 @@ import numpy as np
 
 from MatrixProductState import MPS
 from Tensor import Tensor
+from utils import truncate_USV
 from typing import List
 
 
@@ -10,11 +11,10 @@ class QFTMPO:
         self.n_qubits: int = n_qubits
         self.sites: List[List[Tensor]] = [[] for _ in range(n_qubits)]
 
-
     def __call__(self, mps: MPS):
         """
-        MPO-MPS multiplication.
-        -----------------------
+        Multiplies the given MPS with the MPO.
+        --------------------------------------
         """
         assert len(mps) == len(self)
         pass
@@ -68,7 +68,7 @@ class QFTMPO:
         self.contract_site(0)
 
         ## Add new PhaseMPO one by one
-        for s in range(1, self.n_qubits):
+        for s in range(1, self.n_qubits-1):
             self.put_phase_mpo(s)
 
             ## Contract and SVD upwards
@@ -80,23 +80,52 @@ class QFTMPO:
 
                     T = self.sites[i].pop(0)
 
-                    ## Reshape Tensor into order-2 for the SVD
                     if T.ndim == 4:
+                        ## Reshape
                         v1, v2, h1, h2 = T.shape
-                        T.reshape(v1*v2, h1*h2)
+                        T = T.reshape(v1*v2, h1*h2)
+
+                        ## Apply SVD and embed S into U
+                        U, S, V = np.linalg.svd(T, full_matrices=False)
+                        S = np.diag(S)
+
+                        ## Truncate to 1 for dimensions to match
+                        U, S, V = truncate_USV(1, U, S, V)
+
+                        ## Embed S into U
+                        U = np.einsum("ij, jj -> ij", U, S)
+
+                        ## Adjust dimensions
+                        bond = S.shape[0]
+                        U = U.reshape(v1, v2, bond)
+                        V = V.reshape(bond, h1, h2)
 
                     elif T.ndim == 5:
+                        ## Reshape
                         v1, v2, v3, h1, h2 = T.shape
-                        T.reshape(v1*v2*v3, h1*h2)
+                        T = T.reshape(v1*v2*v3, h1*h2)
+
+                        ## Apply SVD and embed S into U
+                        U, S, V = np.linalg.svd(T, full_matrices=False)
+                        S = np.diag(S)
+
+                        ## Truncate to 1 for dimensions to match
+                        U, S, V = truncate_USV(1, U, S, V)
+
+                        ## Embed S into U
+                        U = np.einsum("ij, jj -> ij", U, S)
+
+                        ## Adjust dimensions
+                        bond = S.shape[0]
+                        U = U.reshape(v1, v2, bond)
+                        V = V.reshape(bond, v3, h1, h2)
 
                     else:
                         raise ValueError
 
-                    U, S, V = np.linalg.svd(T, full_matrices=False)
-                    U = np.einsum("ij, jj -> ij", U, np.diag(S))
-
-                    self.sites[i] = [Tensor(V)]
-                    self.sites[i-1].append(Tensor(U, "U"))
+                    ## Replace site with V and append U to above site
+                    self.sites[i] = [Tensor(V, name=f"T{V.ndim}")]
+                    self.sites[i-1].append(Tensor(U, name=f"U{U.ndim}"))
 
             ## SVD and contract downwards
             for i in range(s, self.n_qubits):
@@ -165,5 +194,5 @@ class QFTMPO:
                 raise ValueError
 
         ## Replace site with new tensor
-        self.sites[site] = [Tensor(T)]
+        self.sites[site] = [Tensor(T, name=f"T{T.ndim}")]
 
