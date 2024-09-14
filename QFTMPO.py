@@ -127,10 +127,54 @@ class QFTMPO:
                     self.sites[i] = [Tensor(V, name=f"T{V.ndim}")]
                     self.sites[i-1].append(Tensor(U, name=f"U{U.ndim}"))
 
+            ## TODO: delete
+            print(self)
+            for site in self.sites:
+                t = site[0]
+                print(t.shape)
+
+            ## TODO: debug
             ## SVD and contract downwards
             for i in range(s, self.n_qubits):
-                ## TODO
-                break
+
+                ## Contract tensor with V above
+                if len(self[s]) == 2:
+                    T1, V = self[s]
+
+                    if T1.ndim == 4:
+                        ## Contract T4--V2
+                        T = np.einsum("bk, klij -> blij", V, T1)
+                        self[s] = [T]
+
+                    elif T1.ndim == 3:
+                        ## Contract T3--V2
+                        T = np.einsum("bk, kij -> bij", V, T1)
+                        self[s] = [T]
+
+                    else:
+                        raise ValueError
+
+                if i == self.n_qubits-1:
+                    break   ## Don't apply SVD to the last site
+
+                T = self[s].pop(0)
+
+                print(f"Decomposing site {s}")
+                ## Apply SVD to tensor
+                v1, v2, h1, h2 = T.shape
+                T = T.reshape(v1*v2, h1*h2)
+                U, S, V = np.linalg.svd(T, full_matrices=False)
+
+                S = np.diag(S)
+                U, S, V = truncate_USV(1, U, S, V)
+
+                bond = S.shape[0]
+                U.reshape(v1, bond, h1, h2)
+                V = np.einsum("ij, jj -> ij", V, S)
+
+                ## Replace site with U and append V below
+                self[s] = [U]
+                self[s+1].append(V)
 
         ## Add last hadamard and contract
         self.sites[self.n_qubits-1].append(Tensor.gate("H"))
