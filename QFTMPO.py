@@ -29,7 +29,7 @@ class QFTMPO:
         self.sites[key] = value
 
     def __repr__(self):
-        st = f"{self.__class__.__name__}({self.n_qubits})\n---------------\n"
+        st = f"{self.__class__.__name__}({self.n_qubits})\n--------------------\n"
         for i, lst in enumerate(self.sites):
             names = [t.name for t in lst]
             st += f"s{i}: {str(names)}\n"
@@ -235,3 +235,9 @@ class QFTMPO:
         ## Replace site with new tensor
         self.sites[site] = [Tensor(T, name=f"T{T.ndim}")]
 
+    def print_dims(self):
+        st = f"{self.__class__.__name__}({self.n_qubits})\n--------------------\n"
+        for i, lst in enumerate(self.sites):
+            dims = [t.shape for t in lst]
+            st += f"s{i}: {str(dims)}\n"
+        return st
