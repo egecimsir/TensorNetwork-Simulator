@@ -18,12 +18,16 @@ class TensorNetwork:
 
         ## Entangle each two qubits up to given percentage of qubits
         for i in range(0, qubits, 2):
-            qc.x(i, param=2*np.pi / random.randint(0, 48))
+            qc.x(i, param=2*np.pi / random.randint(1, 48))
+            if i == n_qubits-1:
+                break
             qc.c_not(i, i + 1)
 
         ## Entangle all qubits that are already entangled
         for i in range(1, qubits, 2):
-            qc.x(i, param=2 * np.pi / random.randint(0, 48))
+            qc.x(i, param=2 * np.pi / random.randint(1, 48))
+            if i == n_qubits-1:
+                break
             qc.c_not(i, i + 1)
 
         return qc.mps
