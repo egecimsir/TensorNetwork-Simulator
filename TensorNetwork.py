@@ -10,9 +10,9 @@ from typing import Optional
 class TensorNetwork:
 
     @classmethod
-    def generate_entangled_circuit(cls, n_qubits: int, ent_level: float) -> MPS:
+    def generate_entangled_circuit(cls, n_qubits: int, ent_level: float, bond_dim: Optional[int] = None) -> MPS:
         assert 0 <= ent_level <= 1
-        qc = cls(n_qubits=n_qubits)
+        qc = cls(n_qubits=n_qubits, bond_dim=bond_dim)
 
         qubits = int(n_qubits * ent_level)
 
@@ -44,35 +44,36 @@ class TensorNetwork:
         assert check_input_state(state)
 
         n_qubits = len(state)
-        qc = cls(n_qubits, state)
+        qc = cls(n_qubits, state=state, bond_dim=bond_dim)
 
         for i in range(n_qubits):
             qc.hadamard(i)
             for j in range(i+1, n_qubits):
                 if i + 1 != j:  ## If not adjacent
-                    qc.move_tensor(T=j, to=i+1, bond_dim=bond_dim)
+                    qc.move_tensor(T=j, to=i+1)
 
-                qc.c_phase(i, i+1, phase=np.pi / 2**(j-i), bond_dim=bond_dim)
+                qc.c_phase(i, i+1, phase=np.pi / 2**(j-i))
 
                 if i + 1 != j:  ## If not adjacent
-                    qc.move_tensor(T=i+1, to=j, bond_dim=bond_dim)
+                    qc.move_tensor(T=i+1, to=j)
 
         return qc
 
     @classmethod
-    def generate_randomized_circuit(cls, depth: int):
+    def generate_randomized_circuit(cls, depth: int, bond_dim: Optional[int] = None):
         assert depth >= 1
         pass
 
     @classmethod
-    def from_MPS(cls, mps: MPS):
-        qc = cls(n_qubits=mps.n_qubits)
+    def from_MPS(cls, mps: MPS, bond_dim: Optional[int] = None):
+        qc = cls(n_qubits=mps.n_qubits, bond_dim=bond_dim)
         qc.mps = mps
         return qc
 
-    def __init__(self, n_qubits: int, state: Optional[str] = None):
+    def __init__(self, n_qubits: int, state: Optional[str] = None, bond_dim: Optional[int] = None):
         self.n_qubits: int = n_qubits
         self.mps: MPS = MPS(n_qubits)
+        self.bond_dim = bond_dim
 
         if state is not None:
             self.initialize(state)
@@ -253,7 +254,7 @@ class TensorNetwork:
 
         return self
 
-    def move_tensor(self, T: int, to: int, bond_dim: Optional[int] = None):
+    def move_tensor(self, T: int, to: int):
         """
         Moves tensor t to a given site in the network using swaps.
         ----------------------------------------------------------
@@ -265,10 +266,10 @@ class TensorNetwork:
 
         if T > to:  ## move tensor T backward
             for i in range(T, to, -1):
-                self.swap(i-1, i, bond_dim)
+                self.swap(i-1, i)
         elif T < to:  ## move tensor T backward
             for i in range(T, to):
-                self.swap(i, i+1, bond_dim)
+                self.swap(i, i+1)
         else:
             pass
 
@@ -308,20 +309,20 @@ class TensorNetwork:
         """
         return self.apply_single_gate(op="H", qbit=qbit, param=None)
 
-    def swap(self, c_qbit: int, t_qbit: int, bond_dim: Optional[int] = None):
+    def swap(self, c_qbit: int, t_qbit: int):
         """
         Applies swap operation on two neighbouring qubits.
         """
-        return self.apply_multi_gate(op="SWAP", c_qbit=c_qbit, t_qbit=t_qbit, param=None, bond_dim=bond_dim)
+        return self.apply_multi_gate(op="SWAP", c_qbit=c_qbit, t_qbit=t_qbit, param=None, bond_dim=self.bond_dim)
 
-    def c_not(self, c_qbit: int, t_qbit: int, bond_dim: Optional[int] = None):
+    def c_not(self, c_qbit: int, t_qbit: int):
         """
         Applies CNOT gate to the MPS for neighbouring qubits.
         """
-        return self.apply_multi_gate(op="X", c_qbit=c_qbit, t_qbit=t_qbit, param=None, bond_dim=bond_dim)
+        return self.apply_multi_gate(op="X", c_qbit=c_qbit, t_qbit=t_qbit, param=None, bond_dim=self.bond_dim)
 
-    def c_phase(self, c_qbit: int, t_qbit: int, phase: float, bond_dim: Optional[int] = None):
+    def c_phase(self, c_qbit: int, t_qbit: int, phase: float):
         """
         Applies controlled phase gate to the MPS for neighbouring qubits.
         """
-        return self.apply_multi_gate(op="Z", c_qbit=c_qbit, t_qbit=t_qbit, param=phase, bond_dim=bond_dim)
+        return self.apply_multi_gate(op="Z", c_qbit=c_qbit, t_qbit=t_qbit, param=phase, bond_dim=self.bond_dim)
