@@ -13,11 +13,78 @@ class QFTMPO:
 
     def __call__(self, mps: MPS):
         """
-        Multiplies the given MPS with the MPO.
-        --------------------------------------
+        Multiplies the given MPS with the MPO using zip-up algorithm.
+        -------------------------------------------------------------
         """
         assert len(mps) == len(self)
-        pass
+
+        ## Put mps and mpo tensors in lists
+        tensors = []
+        for i in range(len(mps)):
+            tensors.append([mps[i], self[i][0]])
+
+        ## Zip-up
+        for i in range(len(mps)):
+
+            if i == 0:  ## First site
+
+                S, M = tensors[i]
+                T = np.einsum("ix, kij -> xkj", S, M)
+
+                x, k, j = T.shape
+
+                T = T.reshape(j, x*k)
+
+                U, S, V = np.linalg.svd(T, full_matrices=False)
+                S = np.diag(S)
+
+                ## Truncate to 1 for dimensions to match
+                U, S, V = truncate_USV(len(S), U, S, V)
+
+                V = np.einsum("jj, ji -> ji", S, V)
+
+                bond = S.shape[0]
+                U = U.reshape(j, bond)
+                V = V.reshape(bond, x, k)
+
+                tensors[i] = U
+                tensors[i+1].append(V)
+
+            elif i == len(mps)-1:  ## Last site
+
+                S, M, V = tensors[i]
+                T = np.einsum("xi, kij, axk -> aj", S, M, V)
+                tensors[i] = T
+
+            else:  ## Middle sites
+
+                S, M, V = tensors[i]
+                T = np.einsum("xiy, klij, axk -> ylaj", S, M, V)
+
+                y, l, a, j = T.shape
+
+                T = T.reshape(j*a, y*l)
+
+                U, S, V = np.linalg.svd(T, full_matrices=False)
+                S = np.diag(S)
+
+                ## Truncate to 1 for dimensions to match
+                U, S, V = truncate_USV(len(S), U, S, V)
+
+                V = np.einsum("jj, ij -> ij", S, V)
+
+                bond = S.shape[0]
+                U = U.reshape(a, j, bond)
+                V = V.reshape(bond, y, l)
+
+                tensors[i] = U
+                tensors[i + 1].append(V)
+
+        ## Replace MPS tensors
+        mps.tensors = tensors
+
+        return mps
+
 
     def __len__(self):
         return self.n_qubits
@@ -128,10 +195,9 @@ class QFTMPO:
                     self.sites[i] = [Tensor(V, name=f"T{V.ndim}")]
                     self.sites[i-1].append(Tensor(U, name=f"U{U.ndim}"))
 
-            ## TODO: debug
             ## SVD and contract downwards
             for i in range(s, self.n_qubits):
-                break
+                break  ## TODO: debug
                 ## Contract tensor with V above
                 if len(self[s]) == 2:
                     T1, V = self[s]
@@ -236,8 +302,6 @@ class QFTMPO:
         self.sites[site] = [Tensor(T, name=f"T{T.ndim}")]
 
     def print_dims(self):
-        st = f"{self.__class__.__name__}({self.n_qubits})\n--------------------\n"
+        print(f"{self.__class__.__name__}({self.n_qubits})\n--------------------\n")
         for i, lst in enumerate(self.sites):
-            dims = [t.shape for t in lst]
-            st += f"s{i}: {str(dims)}\n"
-        return st
+            print(f"s{i}: {str([t.shape for t in lst])}")
