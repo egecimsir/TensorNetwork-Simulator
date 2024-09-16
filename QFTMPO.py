@@ -3,7 +3,7 @@ import numpy as np
 from MatrixProductState import MPS
 from Tensor import Tensor
 from utils import truncate_USV
-from typing import List
+from typing import List, Optional
 
 
 class QFTMPO:
@@ -11,7 +11,7 @@ class QFTMPO:
         self.n_qubits: int = n_qubits
         self.sites: List[List[Tensor]] = [[] for _ in range(n_qubits)]
 
-    def __call__(self, mps: MPS):
+    def __call__(self, mps: MPS, bond_dim: Optional[int] = None):
         """
         Multiplies the given MPS with the MPO using zip-up algorithm.
         -------------------------------------------------------------
@@ -28,25 +28,32 @@ class QFTMPO:
 
             if i == 0:  ## First site
 
+                ## Contract MPS-MPO tensors at site-0
                 S, M = tensors[i]
                 T = np.einsum("ix, kij -> xkj", S, M)
 
+                ## Reshape T: (j)(xk)
                 x, k, j = T.shape
-
                 T = T.reshape(j, x*k)
 
+                ## SVD
                 U, S, V = np.linalg.svd(T, full_matrices=False)
                 S = np.diag(S)
 
-                ## Truncate to 1 for dimensions to match
-                U, S, V = truncate_USV(len(S), U, S, V)
+                ## Truncate to bond_dim
+                if bond_dim is not None:
+                    bond_dim = min(len(S), bond_dim)
+                    U, S, V = truncate_USV(bond_dim, U, S, V)
 
+                ## Embed S into V
                 V = np.einsum("jj, ji -> ji", S, V)
 
+                ## Adjust dimensions
                 bond = S.shape[0]
                 U = U.reshape(j, bond)
                 V = V.reshape(bond, x, k)
 
+                ## Save U at site-i and append V below
                 tensors[i] = U
                 tensors[i+1].append(V)
 
@@ -58,25 +65,32 @@ class QFTMPO:
 
             else:  ## Middle sites
 
+                ## Contract MPS-MPO tensors at site-i
                 S, M, V = tensors[i]
                 T = np.einsum("xiy, klij, axk -> ylaj", S, M, V)
 
+                ## Reshape T: (aj)(xk)
                 y, l, a, j = T.shape
-
                 T = T.reshape(j*a, y*l)
 
+                ## SVD
                 U, S, V = np.linalg.svd(T, full_matrices=False)
                 S = np.diag(S)
 
-                ## Truncate to 1 for dimensions to match
-                U, S, V = truncate_USV(len(S), U, S, V)
+                ## Truncate to bond_dim
+                if bond_dim is not None:
+                    bond_dim = min(len(S), bond_dim)
+                    U, S, V = truncate_USV(bond_dim, U, S, V)
 
-                V = np.einsum("jj, ij -> ij", S, V)
+                ## Embed S into V
+                V = np.einsum("jj, ji -> ji", S, V)
 
+                ## Adjust dimensions
                 bond = S.shape[0]
                 U = U.reshape(a, j, bond)
                 V = V.reshape(bond, y, l)
 
+                ## Save U at site-i and append V below
                 tensors[i] = U
                 tensors[i + 1].append(V)
 
@@ -84,7 +98,6 @@ class QFTMPO:
         mps.tensors = tensors
 
         return mps
-
 
     def __len__(self):
         return self.n_qubits
