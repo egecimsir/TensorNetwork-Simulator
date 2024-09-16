@@ -139,7 +139,7 @@ class QFTMPO:
         print(self)
         self.sites = [[] for _ in range(self.n_qubits)]
 
-    def zip_up(self):
+    def zip_up(self, bond_dim: Optional[int] = None):
         """
         Builds the QFT MPO using the zip-up algorithm.
         ----------------------------------------------
@@ -164,14 +164,16 @@ class QFTMPO:
                     if T.ndim == 4:
                         ## Reshape
                         v1, v2, h1, h2 = T.shape
-                        T = T.reshape(v1*v2, h1*h2)
+                        T = T.reshape(v1*h1, v2*h2)
 
                         ## Apply SVD and embed S into U
                         U, S, V = np.linalg.svd(T, full_matrices=False)
                         S = np.diag(S)
 
-                        ## Truncate to 1 for dimensions to match
-                        U, S, V = truncate_USV(1, U, S, V)
+                        ## Truncate to bond_dim
+                        if bond_dim is not None:
+                            bond_dim = min(len(S), bond_dim)
+                            U, S, V = truncate_USV(bond_dim, U, S, V)
 
                         ## Embed S into U
                         U = np.einsum("ij, jj -> ij", U, S)
@@ -184,14 +186,16 @@ class QFTMPO:
                     elif T.ndim == 5:
                         ## Reshape
                         v1, v2, v3, h1, h2 = T.shape
-                        T = T.reshape(v1*v2*v3, h1*h2)
+                        T = T.reshape(v1*v2, v3*h1*h2)
 
                         ## Apply SVD and embed S into U
                         U, S, V = np.linalg.svd(T, full_matrices=False)
                         S = np.diag(S)
 
-                        ## Truncate to 1 for dimensions to match
-                        U, S, V = truncate_USV(1, U, S, V)
+                        ## Truncate to bond_dim
+                        if bond_dim is not None:
+                            bond_dim = min(len(S), bond_dim)
+                            U, S, V = truncate_USV(bond_dim, U, S, V)
 
                         ## Embed S into U
                         U = np.einsum("ij, jj -> ij", U, S)
@@ -211,44 +215,70 @@ class QFTMPO:
             ## SVD and contract downwards
             for i in range(s, self.n_qubits):
                 break  ## TODO: debug
-                ## Contract tensor with V above
-                if len(self[s]) == 2:
-                    T1, V = self[s]
 
-                    if T1.ndim == 4:
-                        ## Contract T4--V2
-                        T = np.einsum("bk, klij -> blij", V, T1)
-                        self[s] = [T]
+                if i == s:  ## first site of PhaseMPO
+                    T = self[i][0]
 
-                    elif T1.ndim == 3:
-                        ## Contract T3--V2
-                        T = np.einsum("bk, kij -> bij", V, T1)
-                        self[s] = [T]
+                    ## Reshape
+                    v1, v2, h1, h2 = T.shape
+                    T = T.reshape(h1*h2*v1, v2)
 
-                    else:
-                        raise ValueError
+                    ## SVD
+                    U, S, V = np.linalg.svd(T)
+                    S = np.diag(S)
 
-                if i == self.n_qubits-1:
-                    break   ## Don't apply SVD to the last site
+                    ## Truncate to bond_dim
+                    if bond_dim is not None:
+                        bond_dim = min(len(S), bond_dim)
+                        U, S, V = truncate_USV(bond_dim, U, S, V)
 
-                T = self[s].pop(0)
+                    ## Embed S into V
+                    V = np.einsum("jj, ji -> ji", S, V)
 
-                print(f"Decomposing site {s}")
-                ## Apply SVD to tensor
-                v1, v2, h1, h2 = T.shape
-                T = T.reshape(v1*v2, h1*h2)
-                U, S, V = np.linalg.svd(T, full_matrices=False)
+                    ## Adjust dimensions
+                    bond = len(S)
+                    U = U.reshape(v1, bond, h1, h2)  ## fixme
+                    V = V.reshape(bond, v2)
 
-                S = np.diag(S)
-                U, S, V = truncate_USV(1, U, S, V)
+                    ## Replace site with U and append V below
+                    self[i] = [Tensor(U)]
+                    self[i+1].append(V)
 
-                bond = S.shape[0]
-                U.reshape(v1, bond, h1, h2)
-                V = np.einsum("ij, jj -> ij", V, S)
+                elif i == len(self)-1:  ## last site
+                    T, V = self[s]
+                    T = np.einsum("kij, bk -> bij", T, V)
+                    self[i] = [Tensor(T)]
 
-                ## Replace site with U and append V below
-                self[s] = [U]
-                self[s+1].append(V)
+                else:   ## middle sites
+
+                    T, V = self[s]
+                    T = np.einsum("klij, bk -> blij", T, V)
+
+                    ## Reshape
+                    v1, v2, h1, h2 = T.shape
+                    T.reshape(h1*h2*v1, v2)
+
+                    ## SVD
+                    U, S, V = np.linalg.svd(T)
+                    S = np.diag(S)
+
+                    ## Truncate to bond_dim
+                    if bond_dim is not None:
+                        bond_dim = min(len(S), bond_dim)
+                        U, S, V = truncate_USV(bond_dim, U, S, V)
+
+                    ## Embed S into V
+                    V = np.einsum("jj, ji -> ji", S, V)
+
+                    ## Adjust dimensions
+                    bond = len(S)
+                    U = U.reshape(v1, bond, h1, h2)
+                    V = V.reshape(bond, v2)
+
+                    ## Replace site with U and append V below
+                    self[i] = [Tensor(U)]
+                    self[i + 1].append(V)
+
 
         ## Add last hadamard and contract
         self.sites[self.n_qubits-1].append(Tensor.gate("H"))
