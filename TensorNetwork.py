@@ -60,11 +60,6 @@ class TensorNetwork:
         return qc
 
     @classmethod
-    def generate_randomized_circuit(cls, depth: int, bond_dim: Optional[int] = None):
-        assert depth >= 1
-        pass
-
-    @classmethod
     def from_MPS(cls, mps: MPS, bond_dim: Optional[int] = None):
         qc = cls(n_qubits=mps.n_qubits, bond_dim=bond_dim)
         qc.mps = mps
