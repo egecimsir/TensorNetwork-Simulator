@@ -1,25 +1,17 @@
 import numpy as np
+import random
 from datetime import datetime
 from typing import Optional
 
 from TensorNetwork import TensorNetwork as TN
 from MatrixProductState import MPS
 from QFTMPO import QFTMPO
-
-
-def runtime(func):
-    def wrapper(*args, **kwargs):
-        start = datetime.now()
-        result = func(*args, **kwargs)
-        end = datetime.now()
-        runtime = (end-start).total_seconds() * 10**3  ## ms
-        return result, runtime
-    return wrapper
+from utils import runtime
 
 
 @runtime
 def prepare_mps(N: int, ent_level: Optional[float] = 0.0, max_bond: Optional[int] = None) -> MPS:
-    return TN.generate_entangled_circuit(n_qubits=N, ent_level=ent_level, bond_dim=max_bond)
+    return TN.generate_entangled_mps(n_qubits=N, ent_level=ent_level, bond_dim=max_bond)
 
 
 @runtime
@@ -28,7 +20,57 @@ def prepare_mpo(N: int, max_bond: Optional[int] = None) -> QFTMPO:
 
 
 @runtime
+def prepare_entangled_mps(N: int, depth: int = 1, ent_level: Optional[float] = 1.0) -> MPS:
+    assert 0 <= ent_level <= 1
+    assert depth >= 1
+
+    qc = TN(n_qubits=N)
+    qubits = int(N * ent_level)
+
+    for _ in range(depth):
+        ## Entangle each two qubits up to given percentage of qubits
+        for i in range(0, qubits, 2):
+            qc.x(i, param=2 * np.pi / random.randint(1, 48))
+            if i == N - 1:
+                break
+            qc.c_not(i, i + 1)
+
+        ## Entangle all qubits that are already entangled
+        for i in range(1, qubits, 2):
+            qc.x(i, param=2 * np.pi / random.randint(1, 48))
+            if i == N - 1:
+                break
+            qc.c_not(i, i + 1)
+
+    ## Entangle first and last qubit
+    qc.move_tensor(T=N-1, to=1)
+    qc.c_not(0, 1)
+    qc.move_tensor(T=1, to=N-1)
+
+    return qc.mps
+
+
+@runtime
+def prepare_AME_state(N: int) -> MPS:
+    qc = TN(n_qubits=N)
+
+    for i in range(N):
+        qc.hadamard(i)
+
+    for i in range(N-2):
+        qc.c_not(i, i+1)
+
+    qc.move_tensor(T=N - 1, to=1)
+    qc.c_not(0, 1)
+    qc.move_tensor(T=1, to=N - 1)
+
+    return qc.mps
+
+
+@runtime
 def qft_with_gates(N: int, ent_level: Optional[float] = 0.0, max_bond: Optional[int] = None) -> MPS:
+    assert 0 <= ent_level <= 1
+
     mps, _ = prepare_mps(N, ent_level=ent_level, max_bond=max_bond)
     qc = TN.from_MPS(mps=mps)
 
@@ -45,6 +87,8 @@ def qft_with_gates(N: int, ent_level: Optional[float] = 0.0, max_bond: Optional[
 
 @runtime
 def qft_with_mpo(N: int, ent_level: Optional[float] = 0.0, max_bond: Optional[int] = None) -> MPS:
+    assert 0 <= ent_level <= 1
+
     mps, _ = prepare_mps(N, ent_level=ent_level)
     mpo = prepare_mpo(N=N, max_bond=max_bond)
     return mpo(mps=mps)
