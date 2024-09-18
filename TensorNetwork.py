@@ -10,7 +10,7 @@ from typing import Optional
 class TensorNetwork:
 
     @classmethod
-    def generate_entangled_circuit(cls, n_qubits: int, ent_level: float, bond_dim: Optional[int] = None) -> MPS:
+    def generate_entangled_mps(cls, n_qubits: int, ent_level: float, bond_dim: Optional[int] = None) -> MPS:
         assert 0 <= ent_level <= 1
         qc = cls(n_qubits=n_qubits, bond_dim=bond_dim)
 

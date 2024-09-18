@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Tuple
+from datetime import datetime
 
 
 def is_unitary(arr: np.ndarray) -> bool:
@@ -74,3 +74,13 @@ def truncate_USV(bond_dim: int, U: np.ndarray, S: np.ndarray, V: np.ndarray):
         raise ValueError
 
     return U, S, V
+
+
+def runtime(func):
+    def wrapper(*args, **kwargs):
+        start = datetime.now()
+        result = func(*args, **kwargs)
+        end = datetime.now()
+        runtime = (end-start).total_seconds() * 10**3  ## ms
+        return result, runtime
+    return wrapper

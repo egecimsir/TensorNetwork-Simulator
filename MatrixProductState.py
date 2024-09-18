@@ -99,3 +99,6 @@ class MPS:
             row_vec = np.einsum("i, ij -> j", row_vec, mat)
 
         return row_vec @ col_vec
+
+    def get_bond_dims(self):
+        return tuple([tensor.shape[0] for tensor in self.tensors[1:]])

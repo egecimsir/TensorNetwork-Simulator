@@ -345,7 +345,7 @@ class QFTMPO:
         self.sites[site] = [Tensor(T, name=f"T{T.ndim}")]
 
     def get_bond_dims(self):
-        return [site[0].shape[0] for site in self.sites[1:]]
+        return tuple([site[0].shape[0] for site in self.sites[1:]])
 
     def print_dims(self):
         print(f"{self.__class__.__name__}({self.n_qubits})\n--------------------\n")
