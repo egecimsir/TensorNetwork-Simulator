@@ -20,7 +20,7 @@ def prepare_mpo(N: int, max_bond: Optional[int] = None) -> QFTMPO:
 
 
 @runtime
-def prepare_entangled_mps(N: int, depth: int = 1, ent_level: Optional[float] = 1.0) -> MPS:
+def prepare_entangled_state(N: int, depth: int = 1, ent_level: Optional[float] = 1.0) -> MPS:
     assert 0 <= ent_level <= 1
     assert depth >= 1
 
@@ -52,6 +52,11 @@ def prepare_entangled_mps(N: int, depth: int = 1, ent_level: Optional[float] = 1
 
 @runtime
 def prepare_AME_state(N: int) -> MPS:
+    """
+    Absoulately Maximally Entangled State
+    -------------------------------------
+    DOI: 10.1103/PhysRevA.100.022342
+    """
     qc = TN(n_qubits=N)
 
     for i in range(N):
@@ -68,16 +73,14 @@ def prepare_AME_state(N: int) -> MPS:
 
 
 @runtime
-def qft_with_gates(N: int, ent_level: Optional[float] = 0.0, max_bond: Optional[int] = None) -> MPS:
-    assert 0 <= ent_level <= 1
+def qft_with_gates(mps: MPS, max_bond: Optional[int] = None) -> MPS:
 
-    mps, _ = prepare_mps(N, ent_level=ent_level, max_bond=max_bond)
-    qc = TN.from_MPS(mps=mps)
+    qc = TN.from_MPS(mps=mps, bond_dim=max_bond)
 
     ## QFT
-    for i in range(N):
+    for i in range(len(mps)):
         qc.hadamard(i)
-        for j in range(i + 1, N):
+        for j in range(i + 1, len(mps)):
             if i + 1 != j:  qc.move_tensor(T=j, to=i + 1)
             qc.c_phase(i, i + 1, phase=np.pi / 2 ** (j - i))
             if i + 1 != j:  qc.move_tensor(T=i + 1, to=j)
@@ -86,10 +89,7 @@ def qft_with_gates(N: int, ent_level: Optional[float] = 0.0, max_bond: Optional[
 
 
 @runtime
-def qft_with_mpo(N: int, ent_level: Optional[float] = 0.0, max_bond: Optional[int] = None) -> MPS:
-    assert 0 <= ent_level <= 1
-
-    mps, _ = prepare_mps(N, ent_level=ent_level)
-    mpo = prepare_mpo(N=N, max_bond=max_bond)
+def qft_with_mpo(mps: MPS, max_bond: Optional[int] = None) -> MPS:
+    mpo = prepare_mpo(N=len(mps), max_bond=max_bond)
     return mpo(mps=mps)
 
