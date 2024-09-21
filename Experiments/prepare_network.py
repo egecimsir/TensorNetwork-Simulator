@@ -89,7 +89,7 @@ def qft_with_gates(mps: MPS, max_bond: Optional[int] = None) -> MPS:
 
 
 @runtime
-def qft_with_mpo(mps: MPS, max_bond: Optional[int] = None) -> MPS:
-    mpo, _ = prepare_mpo(N=len(mps), max_bond=max_bond)
-    return mpo(mps=mps)
+def qft_with_mpo(mps: MPS, constr_bond: Optional[int] = None, zip_up_bond: Optional[int] = None) -> MPS:
+    mpo, _ = prepare_mpo(N=len(mps), max_bond=constr_bond)
+    return mpo(mps=mps, bond_dim=zip_up_bond)
 
